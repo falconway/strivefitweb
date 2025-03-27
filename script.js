@@ -219,9 +219,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentLang = document.querySelector('.selected-language span').textContent;
         
         if (currentLang === 'العربية') {
-            logoLink.href = 'main.html?lang=ARB';
+            logoLink.href = 'index.html?lang=ARB';
         } else {
-            logoLink.href = 'main.html';
+            logoLink.href = 'index.html';
         }
     }
     
