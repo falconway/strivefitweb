@@ -238,7 +238,6 @@ nav {
     font-weight: 700;
     margin-bottom: 20px;
     line-height: 1.2;
-    color: var(--light-text); /* Explicitly setting white color */
 }
 
 .hero p {
@@ -625,7 +624,10 @@ footer {
 .logo-word {
     height: 40px; /* Increased from 30px to 40px */
     width: auto;
-    .footer-logo .logo-word {
+}
+
+.footer-logo .logo-word {
+    filter: brightness(0) invert(1); /* Makes only the logo word white */
 }
 
 /* Responsive logo adjustments */
@@ -685,14 +687,4 @@ footer {
 
 .rtl .header-actions {
     flex-direction: row-reverse;
-}
-
-/* Add this to your existing styles */
-.hero-heading {
-    color: white !important;
-}
-
-/* Or if you prefer to target all h1 in hero section */
-.hero h1 {
-    color: white;
 }
