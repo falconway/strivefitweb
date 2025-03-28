@@ -238,6 +238,7 @@ nav {
     font-weight: 700;
     margin-bottom: 20px;
     line-height: 1.2;
+    color: var(--light-text); /* Explicitly setting white color */
 }
 
 .hero p {
@@ -684,4 +685,14 @@ footer {
 
 .rtl .header-actions {
     flex-direction: row-reverse;
+}
+
+/* Add this to your existing styles */
+.hero-heading {
+    color: white !important;
+}
+
+/* Or if you prefer to target all h1 in hero section */
+.hero h1 {
+    color: white;
 }
