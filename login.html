@@ -15,12 +15,31 @@
         <div class="container">
             <nav>
                 <div class="logo">
-                    <a href="index.html" id="logo-link">
+                    <a href="/">
                         <img src="images/logo shape.png" alt="Strive & Fit Tele Logo Shape" class="logo-shape">
                         <img src="images/logo word.svg" alt="Strive & Fit Tele" class="logo-word">
                     </a>
                 </div>
-                <!-- Removed "Back to Home" button -->
+                <ul class="nav-links">
+                    <li><a href="index.html#about" data-i18n="nav-about">About</a></li>
+                    <li><a href="index.html#approach" data-i18n="nav-approach">Our Approach</a></li>
+                    <li><a href="index.html#services" data-i18n="nav-services">Services</a></li>
+                    <li><a href="index.html#testimonials" data-i18n="nav-testimonials">Testimonials</a></li>
+                    <li><a href="index.html#contact" data-i18n="nav-contact">Contact</a></li>
+                </ul>
+                <div class="header-actions">
+                    <div class="language-dropdown">
+                        <div class="selected-language">
+                            <span>English</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron-down"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        <div class="language-options">
+                            <div class="language-option" data-lang="ENG">English</div>
+                            <div class="language-option" data-lang="ARB">العربية</div>
+                            <div class="language-option" data-lang="ZH-CN">中文 (简体)</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="mobile-menu-toggle">
                     <span></span>
                     <span></span>
@@ -33,101 +52,86 @@
     <section class="login-section">
         <div class="container">
             <div class="login-container">
-                <div class="login-header">
-                    <h2 class="welcome-text">Welcome Back</h2>
-                    <p class="signin-text">Sign in to access your account</p>
-                </div>
-                <form class="login-form">
-                    <div class="form-group">
-                        <label for="email" class="email-label">Email</label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password" class="password-label">Password</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    <div class="form-options">
-                        <div class="remember-me">
-                            <input type="checkbox" id="remember" name="remember">
-                            <label for="remember" class="remember-text">Remember me</label>
+                <div class="login-form-container">
+                    <h2 data-i18n="login-title">Login to Your Account</h2>
+                    <p data-i18n="login-subtitle">Access your healthcare dashboard</p>
+                    <form class="login-form">
+                        <div class="form-group">
+                            <label for="email" data-i18n="email-label">Email</label>
+                            <input type="email" id="email" name="email" placeholder="Enter your email" data-i18n="email-placeholder" required>
                         </div>
-                        <a href="#" class="forgot-password forgot-text">Forgot password?</a>
-                    </div>
-                    <button type="submit" class="cta-button login-btn signin-btn-text">Sign In</button>
-                </form>
-                <div class="login-footer">
-                    <p class="no-account-text">Don't have an account? <a href="register.html" class="signup-text">Sign up</a></p>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" placeholder="Enter your password" data-i18n="password-placeholder" required>
+                        </div>
+                        <div class="form-options">
+                            <div class="remember-me">
+                                <input type="checkbox" id="remember" name="remember">
+                                <label for="remember" data-i18n="remember-me">Remember me</label>
+                            </div>
+                            <a href="#" class="forgot-password" data-i18n="forgot-password">Forgot Password?</a>
+                        </div>
+                        <button type="submit" class="login-button" data-i18n="login-button">Login</button>
+                        <div class="signup-link">
+                            <span data-i18n="no-account">Don't have an account?</span>
+                            <a href="#" data-i18n="signup-link">Sign up</a>
+                        </div>
+                    </form>
+                </div>
+                <div class="login-image">
+                    <img src="images/login-image.jpg" alt="Telemedicine Consultation">
                 </div>
             </div>
         </div>
     </section>
 
-    <footer>
+    <footer class="gradient-footer">
         <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <div class="logo footer-logo-container">
+                        <img src="images/logo shape.png" alt="Strive & Fit Co. Logo Shape" class="logo-shape">
+                        <img src="images/logo word.svg" alt="Strive & Fit Co." class="logo-word">
+                    </div>
+                    <p>Global Telemedicine Solutions</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4 data-i18n="company-label">Company</h4>
+                        <ul>
+                            <li><a href="index.html#about" data-i18n="nav-about">About</a></li>
+                            <li><a href="index.html#approach" data-i18n="nav-approach">Our Approach</a></li>
+                            <li><a href="index.html#services" data-i18n="nav-services">Services</a></li>
+                            <li><a href="index.html#contact" data-i18n="nav-contact">Contact</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h4 data-i18n="resources-label">Resources</h4>
+                        <ul>
+                            <li><a href="#" data-i18n="blog-link">Health Blog</a></li>
+                            <li><a href="#" data-i18n="faq-link">FAQ</a></li>
+                            <li><a href="#" data-i18n="privacy-link">Privacy Policy</a></li>
+                            <li><a href="#" data-i18n="terms-link">Terms of Service</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h4 data-i18n="connect-label">Connect</h4>
+                        <div class="social-links">
+                            <a href="#"><img src="images/instagram.svg" alt="Instagram"></a>
+                            <a href="#"><img src="images/facebook.svg" alt="Facebook"></a>
+                            <a href="#"><img src="images/twitter.svg" alt="Twitter"></a>
+                            <a href="#"><img src="images/linkedin.svg" alt="LinkedIn"></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="copyright">
-                <p class="copyright-text">&copy; 2023 Strive & Fit Co. All rights reserved.</p>
+                <p data-i18n="copyright">&copy; 2023 Strive & Fit Co. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
     <script src="script.js"></script>
-    <script>
-        // Additional translations for login page
-        document.addEventListener('DOMContentLoaded', function() {
-            // Login page translations
-            const translations = {
-                'ARB': {
-                    'welcome-text': 'مرحبًا بعودتك',
-                    'signin-text': 'تسجيل الدخول للوصول إلى حسابك',
-                    'email-label': 'البريد الإلكتروني',
-                    'password-label': 'كلمة المرور',
-                    'remember-text': 'تذكرني',
-                    'forgot-text': 'نسيت كلمة المرور؟',
-                    'signin-btn-text': 'تسجيل الدخول',
-                    'no-account-text': 'ليس لديك حساب؟',
-                    'signup-text': 'إنشاء حساب',
-                    'copyright': '© 2023 سترايف آند فيت. جميع الحقوق محفوظة.'
-                }
-            };
-            
-            // Function to update login page text
-            function updateLoginPageText(langCode) {
-                if (langCode === 'ARB') {
-                    document.querySelector('.welcome-text').textContent = translations['ARB']['welcome-text'];
-                    document.querySelector('.signin-text').textContent = translations['ARB']['signin-text'];
-                    document.querySelector('.email-label').textContent = translations['ARB']['email-label'];
-                    document.querySelector('.password-label').textContent = translations['ARB']['password-label'];
-                    document.querySelector('.remember-text').textContent = translations['ARB']['remember-text'];
-                    document.querySelector('.forgot-text').textContent = translations['ARB']['forgot-text'];
-                    document.querySelector('.signin-btn-text').textContent = translations['ARB']['signin-btn-text'];
-                    document.querySelector('.no-account-text').textContent = translations['ARB']['no-account-text'] + ' ';
-                    document.querySelector('.signup-text').textContent = translations['ARB']['signup-text'];
-                    document.querySelector('.copyright-text').textContent = translations['ARB']['copyright'];
-                    
-                    // Set RTL direction
-                    document.documentElement.setAttribute('dir', 'rtl');
-                    document.body.classList.add('rtl');
-                    
-                    // Update logo link to maintain Arabic language when returning to homepage
-                    const logoLink = document.querySelector('.logo a');
-                    if (logoLink) {
-                        logoLink.href = 'index.html?lang=ARB';
-                    }
-                }
-            }
-            
-            // Check URL parameters for language
-            function getLanguageFromURL() {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('lang');
-            }
-            
-            // Set initial language based on URL parameter
-            const urlLang = getLanguageFromURL();
-            if (urlLang === 'ARB') {
-                updateLoginPageText('ARB');
-            }
-        });
-    </script>
+    <script src="js/language-switcher.js"></script>
 </body>
 </html>
