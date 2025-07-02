@@ -1,6 +1,55 @@
+# Personal setup and management files - DO NOT UPLOAD
+SETUP_GUIDE.md
+
+# Backend runtime files
+backend/node_modules/
+backend/data/
+backend/uploads/
+backend/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
 node_modules/
-.DS_Store
+
+# dotenv environment variables file
 .env
-.vercel
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# macOS
 .DS_Store
-node_modules/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*_backup_*
+*.bak
+
+# Personal notes and documentation
+NOTES.md
+TODO.md
+PRIVATE_*.md
+
+# Vercel
+.vercel

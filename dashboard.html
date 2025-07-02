@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Records Dashboard - Strive & Fit Tele</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .dashboard-section {
+            min-height: calc(100vh - 80px);
+            padding: 20px 0;
+            background-color: #f8f9fa;
+        }
+        
+        .dashboard-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            height: calc(100vh - 140px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dashboard-top {
+            height: 33%;
+            border-bottom: 2px solid #f1f1f1;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dashboard-bottom {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            min-height: 0;
+        }
+        
+        .patient-info-panel {
+            width: 300px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            overflow-y: auto;
+        }
+        
+        .document-viewer-panel {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f1f1;
+            flex-shrink: 0;
+        }
+        
+        .user-info {
+            color: #666;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .upload-section {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            min-height: 120px;
+        }
+        
+        .upload-section:hover,
+        .upload-section.dragover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .upload-btn:hover {
+            background: #0056b3;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .documents-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .documents-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .documents-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .selection-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .select-all-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .batch-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .batch-download-btn,
+        .batch-delete-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .batch-download-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .batch-delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .document-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .document-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .document-item.selected {
+            background: #e7f3ff;
+            border-color: #007bff;
+        }
+        
+        .document-item.active {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+        
+        .document-select {
+            margin-right: 15px;
+        }
+        
+        .document-info {
+            flex: 1;
+        }
+        
+        .document-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .document-meta {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .document-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .download-btn,
+        .delete-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .patient-info-section {
+            margin-bottom: 25px;
+        }
+        
+        .patient-info-section h4 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .patient-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .patient-info-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .patient-info-value {
+            color: #333;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stat-number {
+            display: block;
+            font-size: 24px;
+            font-weight: 600;
+            color: #007bff;
+        }
+        
+        .stat-label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .viewer-title {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .viewer-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .viewer-btn {
+            padding: 8px 16px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .viewer-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .viewer-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .viewer-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            text-align: center;
+        }
+        
+        .viewer-placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-container {
+                height: auto;
+            }
+            
+            .dashboard-bottom {
+                flex-direction: column;
+            }
+            
+            .patient-info-panel {
+                width: 100%;
+            }
+            
+            .documents-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <a href="index.html">
+                        <img src="images/logo shape.png" alt="Strive & Fit Tele Logo Shape" class="logo-shape">
+                        <img src="images/logo word.svg" alt="Strive & Fit Tele" class="logo-word">
+                    </a>
+                </div>
+                <div class="header-actions">
+                    <div class="language-dropdown">
+                        <div class="selected-language">
+                            <span>English</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron-down"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        <div class="language-options">
+                            <div class="language-option" data-lang="ENG">English</div>
+                            <div class="language-option" data-lang="CHN">中文</div>
+                            <div class="language-option" data-lang="ARB">العربية</div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section class="dashboard-section">
+        <div class="container">
+            <div class="dashboard-container">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 data-i18n="dashboard-title">Medical Records Dashboard</h1>
+                        <div class="user-info">
+                            <span data-i18n="account-label">Account:</span> <span id="account-display">****-****-****-****</span>
+                            <div id="debug-info" style="font-size: 12px; color: #dc3545; margin-top: 5px;"></div>
+                        </div>
+                    </div>
+                    <a href="login.html" class="logout-btn" data-i18n="logout">Logout</a>
+                </div>
+
+                <!-- Top 1/3 - Document Management -->
+                <div class="dashboard-top">
+                    <!-- Upload Section -->
+                    <div class="upload-section" id="upload-section">
+                        <h3 data-i18n="upload-title">Upload Medical Documents</h3>
+                        <p data-i18n="upload-subtitle">Drag and drop files here or click to browse</p>
+                        <p data-i18n="upload-formats">Max 50MB</p>
+                        
+                        <input type="file" id="file-input" class="file-input" accept=".pdf,.jpg,.jpeg,.png,.tiff,.gif,.bmp,.webp,.txt,.md,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.dcm,.zip,.rar,.7z" multiple>
+                        <button type="button" class="upload-btn" onclick="document.getElementById('file-input').click()" data-i18n="browse-files">Browse Files</button>
+                        
+                        <div class="loading" id="upload-loading">
+                            <p data-i18n="uploading">Uploading...</p>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents List -->
+                    <div class="documents-list">
+                        <div class="documents-header">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <h3 data-i18n="documents-title">Your Medical Documents</h3>
+                                <button id="refresh-documents-btn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">🔄 Refresh</button>
+                            </div>
+                            <div class="documents-controls" id="documents-controls" style="display: none;">
+                                <div class="selection-info">
+                                    <label class="select-all-container">
+                                        <input type="checkbox" id="select-all-checkbox">
+                                        <span class="checkmark"></span>
+                                        <span data-i18n="select-all">Select All</span>
+                                    </label>
+                                    <span class="selection-count" id="selection-count">0 selected</span>
+                                </div>
+                                <div class="batch-actions" id="batch-actions" style="display: none;">
+                                    <button class="batch-download-btn" id="batch-download-btn" data-i18n="batch-download">Download Selected (ZIP)</button>
+                                    <button class="batch-delete-btn" id="batch-delete-btn" data-i18n="batch-delete">Delete Selected</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="documents-container">
+                            <div class="loading" id="documents-loading">
+                                <p data-i18n="loading-documents">Loading documents...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom 2/3 - Patient Info + Document Viewer -->
+                <div class="dashboard-bottom">
+                    <!-- Left Column - Patient Information -->
+                    <div class="patient-info-panel">
+                        <h3 data-i18n="patient-info-title">Patient Information</h3>
+                        
+                        <div class="patient-info-section">
+                            <h4 data-i18n="account-details">Account Details</h4>
+                            <div class="patient-info-item">
+                                <span class="patient-info-label" data-i18n="account-number">Account Number:</span>
+                                <span class="patient-info-value" id="patient-account">****-****-****-****</span>
+                            </div>
+                            <div class="patient-info-item">
+                                <span class="patient-info-label" data-i18n="registration-date">Registered:</span>
+                                <span class="patient-info-value" id="patient-registration">-</span>
+                            </div>
+                            <div class="patient-info-item">
+                                <span class="patient-info-label" data-i18n="preferred-language">Language:</span>
+                                <span class="patient-info-value" id="patient-language">English</span>
+                            </div>
+                        </div>
+
+                        <div class="patient-info-section">
+                            <h4 data-i18n="document-statistics">Document Statistics</h4>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="total-docs">0</span>
+                                    <span class="stat-label" data-i18n="total-documents">Total</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" id="processed-docs">0</span>
+                                    <span class="stat-label" data-i18n="processed-documents">Processed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="patient-info-section">
+                            <h4 data-i18n="recent-activity">Recent Activity</h4>
+                            <div class="patient-info-item">
+                                <span class="patient-info-label" data-i18n="last-upload">Last Upload:</span>
+                                <span class="patient-info-value" id="last-upload-date">-</span>
+                            </div>
+                            <div class="patient-info-item">
+                                <span class="patient-info-label" data-i18n="last-view">Last Viewed:</span>
+                                <span class="patient-info-value" id="last-view-date">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right 2/3 - Document Viewer -->
+                    <div class="document-viewer-panel">
+                        <div class="viewer-header">
+                            <h3 class="viewer-title" id="viewer-title" data-i18n="no-document-selected">No document selected</h3>
+                            <div class="viewer-actions" id="viewer-actions" style="display: none;">
+                                <button class="viewer-btn active" data-view="original" data-i18n="view-original">Original</button>
+                                <button class="viewer-btn" data-view="processed" data-i18n="view-processed">Processed</button>
+                                <button class="viewer-btn" data-view="translated" data-i18n="view-translated">Translated</button>
+                            </div>
+                        </div>
+                        <div class="viewer-content" id="viewer-content">
+                            <div class="viewer-placeholder">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                                </svg>
+                                <p data-i18n="select-document-to-view">Select a document to view</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/language-switcher.js"></script>
+    <script>
+        // Global variables
+        const API_BASE = 'http://localhost:3000/api';
+        let userCredentials = null;
+
+        // Authentication check
+        function checkAuthentication() {
+            // Check sessionStorage first (from login)
+            let dob = sessionStorage.getItem('dob');
+            let accountNumber = null;
+            
+            // Get account number from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            accountNumber = urlParams.get('account');
+            
+            // Fallback to localStorage if available
+            if (!dob) {
+                dob = localStorage.getItem('user_dob');
+            }
+            if (!accountNumber) {
+                accountNumber = localStorage.getItem('user_account');
+            }
+            
+            if (!dob || !accountNumber) {
+                alert('Please log in first');
+                window.location.href = 'login.html';
+                return null;
+            }
+            
+            // Store in localStorage for future use
+            localStorage.setItem('user_dob', dob);
+            localStorage.setItem('user_account', accountNumber);
+            
+            return { dob, accountNumber };
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load and display documents
+        async function loadDocuments() {
+            if (!userCredentials) {
+                console.log('Cannot load documents: no user credentials');
+                return;
+            }
+            
+            console.log('Loading documents for user:', userCredentials.accountNumber);
+            
+            const documentsContainer = document.getElementById('documents-container');
+            const documentsLoading = document.getElementById('documents-loading');
+            const documentsControls = document.getElementById('documents-controls');
+            
+            if (!documentsContainer) {
+                console.error('Documents container not found!');
+                return;
+            }
+            
+            if (documentsLoading) {
+                documentsLoading.style.display = 'block';
+            }
+            documentsContainer.innerHTML = ''; // Clear current content
+            
+            try {
+                const response = await fetch(`${API_BASE}/get-documents`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(userCredentials)
+                });
+                
+                console.log('Documents API response status:', response.status);
+                const data = await response.json();
+                console.log('Documents API response data:', data);
+                
+                if (data.success) {
+                    console.log(`Found ${data.documents.length} documents`);
+                    displayDocuments(data.documents);
+                    if (documentsControls) {
+                        documentsControls.style.display = data.documents.length > 0 ? 'flex' : 'none';
+                    }
+                } else {
+                    console.error('Failed to load documents:', data.error);
+                    throw new Error(data.error || 'Failed to load documents');
+                }
+            } catch (error) {
+                console.error('Error loading documents:', error);
+                documentsContainer.innerHTML = `<p style="color: #dc3545; text-align: center; padding: 20px;" data-i18n="load-error">Error loading documents: ${error.message}</p>`;
+            } finally {
+                if (documentsLoading) {
+                    documentsLoading.style.display = 'none';
+                }
+            }
+        }
+
+        // Display documents in the list
+        function displayDocuments(documents) {
+            console.log('Displaying documents:', documents);
+            const container = document.getElementById('documents-container');
+            
+            if (!container) {
+                console.error('Documents container not found!');
+                return;
+            }
+            
+            if (documents.length === 0) {
+                console.log('No documents to display');
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <p data-i18n="no-documents">No documents uploaded yet</p>
+                        <p data-i18n="upload-first">Upload your first medical document to get started</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            console.log(`Rendering ${documents.length} documents`);
+            
+            // Sort documents by upload date (newest first)
+            const sortedDocuments = documents.sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+            
+            const documentsHtml = sortedDocuments.map(doc => {
+                const fileSize = doc.size ? ` • ${(doc.size / 1024 / 1024).toFixed(2)} MB` : '';
+                const uploadDate = new Date(doc.uploadDate).toLocaleDateString();
+                
+                return `
+                    <div class="document-item" onclick="viewDocument('${doc.id}', '${escapeHtml(doc.originalName)}', '${doc.mimetype || 'application/octet-stream'}')">
+                        <input type="checkbox" class="document-select" data-doc-id="${doc.id}" onclick="event.stopPropagation()">
+                        <div class="document-info">
+                            <div class="document-name">${escapeHtml(doc.originalName)}</div>
+                            <div class="document-meta">
+                                <span data-i18n="uploaded-on">Uploaded on</span> ${uploadDate}${fileSize}
+                            </div>
+                        </div>
+                        <div class="document-actions">
+                            <button class="download-btn" onclick="event.stopPropagation(); downloadDocument('${doc.id}')" data-i18n="download">Download</button>
+                            <button class="delete-btn" onclick="event.stopPropagation(); deleteDocument('${doc.id}', '${escapeHtml(doc.originalName)}')" data-i18n="delete">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = documentsHtml;
+            console.log('Documents HTML rendered');
+            
+            // Add event listeners for checkboxes
+            const checkboxes = document.querySelectorAll('.document-select');
+            console.log(`Adding event listeners to ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateSelection);
+            });
+            
+            updateDocumentStats(documents);
+            console.log('Document display complete');
+        }
+
+        // Download document
+        async function downloadDocument(documentId) {
+            if (!userCredentials) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/download-document/${documentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(userCredentials)
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'document';
+                    
+                    if (contentDisposition) {
+                        const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+                        const regularMatch = contentDisposition.match(/filename="(.+)"/);
+                        
+                        if (utf8Match) {
+                            filename = decodeURIComponent(utf8Match[1]);
+                        } else if (regularMatch) {
+                            filename = regularMatch[1];
+                        }
+                    }
+                    
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    throw new Error('Download failed');
+                }
+            } catch (error) {
+                console.error('Error downloading document:', error);
+                alert('Error downloading document');
+            }
+        }
+
+        // Delete document
+        async function deleteDocument(documentId, filename) {
+            if (!userCredentials) {
+                console.error('No user credentials for delete');
+                return;
+            }
+            
+            console.log('Delete request for:', documentId, filename);
+            console.log('Using credentials:', userCredentials);
+            
+            const lang = localStorage.getItem('selectedLanguage') || 'ENG';
+            const confirmMessages = {
+                'ENG': `Are you sure you want to delete "${filename}"? This action cannot be undone.`,
+                'CHN': `确定要删除"${filename}"吗？此操作无法撤销。`,
+                'ARB': `هل أنت متأكد من أنك تريد حذف "${filename}"؟ لا يمكن التراجع عن هذا الإجراء.`
+            };
+            
+            if (!confirm(confirmMessages[lang])) {
+                console.log('Delete cancelled by user');
+                return;
+            }
+            
+            try {
+                console.log('Sending delete request to:', `${API_BASE}/delete-document/${documentId}`);
+                
+                const response = await fetch(`${API_BASE}/delete-document/${documentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(userCredentials)
+                });
+                
+                console.log('Delete response status:', response.status);
+                const data = await response.json();
+                console.log('Delete response data:', data);
+                
+                if (data.success) {
+                    console.log('Delete successful, reloading documents...');
+                    await loadDocuments();
+                    
+                    const successMessages = {
+                        'ENG': 'Document deleted successfully',
+                        'CHN': '文档删除成功',
+                        'ARB': 'تم حذف المستند بنجاح'
+                    };
+                    alert(successMessages[lang]);
+                } else {
+                    throw new Error(data.error || 'Delete failed');
+                }
+            } catch (error) {
+                console.error('Error deleting document:', error);
+                const errorMessages = {
+                    'ENG': 'Error deleting document',
+                    'CHN': '删除文档时出错',
+                    'ARB': 'خطأ في حذف المستند'
+                };
+                alert(errorMessages[lang]);
+            }
+        }
+
+        // Selection management
+        function updateSelection() {
+            const checkboxes = document.querySelectorAll('.document-select');
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            const selectionCount = document.getElementById('selection-count');
+            const batchActions = document.getElementById('batch-actions');
+            
+            const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+            const selectedCount = checkedBoxes.length;
+            
+            const lang = localStorage.getItem('selectedLanguage') || 'ENG';
+            const countMessages = {
+                'ENG': selectedCount === 1 ? '1 selected' : `${selectedCount} selected`,
+                'CHN': `已选择 ${selectedCount} 个`,
+                'ARB': `تم تحديد ${selectedCount}`
+            };
+            selectionCount.textContent = countMessages[lang];
+            
+            if (selectedCount === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (selectedCount === checkboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+                selectAllCheckbox.checked = false;
+            }
+            
+            batchActions.style.display = selectedCount > 0 ? 'flex' : 'none';
+            
+            checkboxes.forEach(checkbox => {
+                const documentItem = checkbox.closest('.document-item');
+                if (checkbox.checked) {
+                    documentItem.classList.add('selected');
+                } else {
+                    documentItem.classList.remove('selected');
+                }
+            });
+        }
+
+        // Upload files
+        async function uploadFiles(files) {
+            if (!userCredentials || files.length === 0) {
+                console.log('Upload cancelled: no credentials or files');
+                return;
+            }
+            
+            console.log(`Starting upload of ${files.length} files`);
+            
+            const uploadLoading = document.getElementById('upload-loading');
+            const progressFill = document.getElementById('progress-fill');
+            uploadLoading.style.display = 'block';
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                console.log(`Uploading file ${i + 1}/${files.length}: ${file.name}`);
+                
+                const formData = new FormData();
+                formData.append('document', file);
+                formData.append('dob', userCredentials.dob);
+                formData.append('accountNumber', userCredentials.accountNumber);
+                formData.append('description', '');
+                
+                try {
+                    const response = await fetch(`${API_BASE}/upload-document`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    console.log(`Upload response for ${file.name}:`, data);
+                    
+                    if (data.success) {
+                        successCount++;
+                        console.log(`✅ Successfully uploaded: ${file.name}`);
+                    } else {
+                        throw new Error(data.error || 'Upload failed');
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error(`❌ Error uploading ${file.name}:`, error);
+                    alert(`Error uploading ${file.name}: ${error.message}`);
+                }
+                
+                // Update progress
+                const progress = ((i + 1) / files.length) * 100;
+                progressFill.style.width = `${progress}%`;
+                console.log(`Progress: ${progress}%`);
+            }
+            
+            uploadLoading.style.display = 'none';
+            progressFill.style.width = '0%';
+            
+            // Show upload summary
+            if (successCount > 0 || errorCount > 0) {
+                const message = `Upload complete: ${successCount} successful, ${errorCount} failed`;
+                console.log(message);
+                if (errorCount === 0) {
+                    alert(`Successfully uploaded ${successCount} file(s)!`);
+                }
+            }
+            
+            // Reload documents to show new uploads
+            console.log('Reloading documents...');
+            await loadDocuments();
+        }
+
+        // Patient info functionality
+        function updatePatientInfo() {
+            if (!userCredentials) return;
+            
+            const accountDisplay = userCredentials.accountNumber.replace(/\d(?=\d{4})/g, '*');
+            
+            const mainAccountDisplay = document.getElementById('account-display');
+            const patientAccountDisplay = document.getElementById('patient-account');
+            
+            if (mainAccountDisplay) {
+                mainAccountDisplay.textContent = accountDisplay;
+            }
+            
+            if (patientAccountDisplay) {
+                patientAccountDisplay.textContent = accountDisplay;
+            }
+            
+            const lang = localStorage.getItem('selectedLanguage') || 'ENG';
+            const languageNames = {
+                'ENG': 'English',
+                'CHN': '中文',
+                'ARB': 'العربية'
+            };
+            
+            const languageDisplay = document.getElementById('patient-language');
+            if (languageDisplay) {
+                languageDisplay.textContent = languageNames[lang];
+            }
+        }
+
+        function updateDocumentStats(documents) {
+            document.getElementById('total-docs').textContent = documents.length;
+            document.getElementById('processed-docs').textContent = '0';
+            
+            if (documents.length > 0) {
+                const lastUpload = new Date(Math.max(...documents.map(d => new Date(d.uploadDate))));
+                document.getElementById('last-upload-date').textContent = lastUpload.toLocaleDateString();
+            }
+        }
+
+        // Document viewer
+        function viewDocument(documentId, filename, mimetype) {
+            document.getElementById('viewer-title').textContent = filename;
+            document.getElementById('viewer-actions').style.display = 'flex';
+            
+            document.querySelectorAll('.document-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
+            
+            const viewerContent = document.getElementById('viewer-content');
+            viewerContent.innerHTML = `
+                <div class="viewer-placeholder">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                    </svg>
+                    <p>Document viewer feature coming soon</p>
+                    <p>Use the download button to view the file</p>
+                </div>
+            `;
+            
+            document.getElementById('last-view-date').textContent = new Date().toLocaleDateString();
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard initializing...');
+            
+            userCredentials = checkAuthentication();
+            if (!userCredentials) {
+                console.log('Authentication failed, redirecting to login');
+                return;
+            }
+            
+            console.log('User authenticated:', userCredentials);
+            
+            // Show account status for testing
+            const debugInfo = document.getElementById('debug-info');
+            if (userCredentials.accountNumber === '50-63-85-6521-18-4989') {
+                console.log('✅ Using correct test account - ready for fresh uploads');
+                debugInfo.innerHTML = '✅ Test account - ready for uploads';
+                debugInfo.style.color = '#28a745';
+            } else {
+                console.log('⚠️ For testing, use account: 50-63-85-6521-18-4989');
+                debugInfo.innerHTML = `⚠️ For testing: Use 50-63-85-6521-18-4989`;
+                debugInfo.style.color = '#dc3545';
+            }
+
+            updatePatientInfo();
+            
+            // Initial document load
+            console.log('Loading documents on page load...');
+            loadDocuments();
+            
+            // Ensure correct credentials for test account
+            if (userCredentials.accountNumber === '50-63-85-6521-18-4989' && userCredentials.dob !== '1991-11-04') {
+                console.log('Fixing DOB for test account');
+                userCredentials.dob = '1991-11-04';
+                localStorage.setItem('user_dob', '1991-11-04');
+                sessionStorage.setItem('dob', '1991-11-04');
+            }
+
+            const fileInput = document.getElementById('file-input');
+            const uploadSection = document.getElementById('upload-section');
+            const refreshBtn = document.getElementById('refresh-documents-btn');
+            
+            // Add refresh button functionality
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    console.log('Manual refresh requested');
+                    loadDocuments();
+                });
+            }
+            
+            // DEBUG: Test display function with mock data
+            window.testDisplay = function() {
+                console.log('Testing display with mock data...');
+                const mockDocs = [
+                    {
+                        id: 'test1',
+                        originalName: 'Test Document.pdf',
+                        uploadDate: new Date().toISOString(),
+                        size: 12345,
+                        mimetype: 'application/pdf'
+                    }
+                ];
+                displayDocuments(mockDocs);
+            };
+            
+            // DEBUG: Show what we're sending to the API
+            console.log('API Request will be:', {
+                url: `${API_BASE}/get-documents`,
+                credentials: userCredentials
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                console.log('File input changed');
+                console.log('Selected files:', e.target.files.length);
+                if (e.target.files.length > 0) {
+                    console.log('File names:', Array.from(e.target.files).map(f => f.name));
+                    uploadFiles(e.target.files);
+                } else {
+                    console.log('No files selected');
+                }
+            });
+
+            // Drag and drop functionality
+            uploadSection.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Drag enter detected');
+            });
+
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadSection.classList.add('dragover');
+                console.log('Drag over detected');
+            });
+
+            uploadSection.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!uploadSection.contains(e.relatedTarget)) {
+                    uploadSection.classList.remove('dragover');
+                    console.log('Drag leave detected');
+                }
+            });
+
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadSection.classList.remove('dragover');
+                console.log('Drop event detected');
+                console.log('DataTransfer:', e.dataTransfer);
+                console.log('Files count:', e.dataTransfer?.files?.length || 0);
+                
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    console.log('Processing dropped files:', Array.from(e.dataTransfer.files).map(f => f.name));
+                    uploadFiles(e.dataTransfer.files);
+                } else {
+                    console.log('No files found in drop event');
+                }
+            });
+
+            // Batch operations
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            const batchDownloadBtn = document.getElementById('batch-download-btn');
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', () => {
+                    const checkboxes = document.querySelectorAll('.document-select');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = selectAllCheckbox.checked;
+                    });
+                    updateSelection();
+                });
+            }
+
+            if (batchDownloadBtn) {
+                batchDownloadBtn.addEventListener('click', async () => {
+                    const checkedBoxes = Array.from(document.querySelectorAll('.document-select:checked'));
+                    const documentIds = checkedBoxes.map(cb => cb.getAttribute('data-doc-id'));
+                    
+                    if (documentIds.length === 0) {
+                        alert('Please select at least one document to download.');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE}/batch-download-documents`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json; charset=utf-8',
+                            },
+                            body: JSON.stringify({
+                                ...userCredentials,
+                                documentIds: documentIds
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `Medical_Documents_${new Date().toISOString().split('T')[0]}.zip`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                            
+                            document.querySelectorAll('.document-select').forEach(cb => cb.checked = false);
+                            updateSelection();
+                        } else {
+                            throw new Error('Batch download failed');
+                        }
+                    } catch (error) {
+                        console.error('Error in batch download:', error);
+                        alert('Error downloading documents');
+                    }
+                });
+            }
+
+            if (batchDeleteBtn) {
+                batchDeleteBtn.addEventListener('click', async () => {
+                    const checkedBoxes = Array.from(document.querySelectorAll('.document-select:checked'));
+                    const documentIds = checkedBoxes.map(cb => cb.getAttribute('data-doc-id'));
+                    
+                    if (documentIds.length === 0) {
+                        alert('Please select at least one document to delete.');
+                        return;
+                    }
+                    
+                    if (!confirm(`Are you sure you want to delete ${documentIds.length} selected document(s)? This action cannot be undone.`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE}/batch-delete-documents`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json; charset=utf-8',
+                            },
+                            body: JSON.stringify({
+                                ...userCredentials,
+                                documentIds: documentIds
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            await loadDocuments();
+                            alert(`Successfully deleted ${data.deletedCount} document(s)`);
+                        } else {
+                            throw new Error(data.error || 'Batch delete failed');
+                        }
+                    } catch (error) {
+                        console.error('Error in batch delete:', error);
+                        alert('Error deleting documents');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

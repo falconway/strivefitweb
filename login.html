@@ -92,6 +92,102 @@
             text-decoration: none;
             font-weight: 600;
         }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        
+        .account-display {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .account-number {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: #155724;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            margin: 15px 0;
+            letter-spacing: 2px;
+        }
+        
+        .save-instructions {
+            margin-top: 15px;
+        }
+        
+        .copy-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .copy-button:hover {
+            background: #218838;
+        }
+        
+        .auth-form h3 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .dob-input-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .dob-input {
+            flex: none;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .dob-input:first-child {
+            width: 80px; /* YYYY */
+        }
+        
+        .dob-input:nth-child(3) {
+            width: 50px; /* MM */
+        }
+        
+        .dob-input:nth-child(5) {
+            width: 50px; /* DD */
+        }
+        
+        .dob-separator {
+            font-weight: bold;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .dob-hint {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -104,7 +200,19 @@
                         <img src="images/logo word.svg" alt="Strive & Fit Tele" class="logo-word">
                     </a>
                 </div>
-                <!-- No language switcher here -->
+                <div class="header-actions">
+                    <div class="language-dropdown">
+                        <div class="selected-language">
+                            <span>English</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron-down"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        <div class="language-options">
+                            <div class="language-option" data-lang="ENG">English</div>
+                            <div class="language-option" data-lang="CHN">中文</div>
+                            <div class="language-option" data-lang="ARB">العربية</div>
+                        </div>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -112,94 +220,484 @@
     <section class="login-section">
         <div class="container">
             <div class="login-container">
-                <h2 data-i18n="login-title">Login to Your Account</h2>
-                <form class="login-form">
-                    <div class="form-group">
-                        <label for="email" data-i18n="login-email">Email</label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password" data-i18n="login-password">Password</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    <div class="form-options">
-                        <div class="remember-me">
-                            <input type="checkbox" id="remember" name="remember">
-                            <label for="remember" data-i18n="login-remember">Remember me</label>
+                <h2 data-i18n="login-title">Access Your Medical Records</h2>
+                
+                <!-- Login Form -->
+                <div id="login-form" class="auth-form">
+                    <form class="login-form">
+                        <div class="form-group">
+                            <label for="dob" data-i18n="login-dob">Date of Birth (YYYY-MM-DD)</label>
+                            <div class="dob-input-container">
+                                <input type="text" id="dob-year" class="dob-input" placeholder="YYYY" maxlength="4" pattern="[0-9]{4}">
+                                <span class="dob-separator">-</span>
+                                <input type="text" id="dob-month" class="dob-input" placeholder="MM" maxlength="2" pattern="[0-9]{2}">
+                                <span class="dob-separator">-</span>
+                                <input type="text" id="dob-day" class="dob-input" placeholder="DD" maxlength="2" pattern="[0-9]{2}">
+                                <input type="hidden" id="dob" name="dob" required>
+                            </div>
+                            <small class="dob-hint" data-i18n="dob-hint">Enter your date of birth in YYYY-MM-DD format</small>
                         </div>
-                        <a href="#" class="forgot-password" data-i18n="login-forgot">Forgot password?</a>
+                        <div class="form-group">
+                            <label for="accountNumber" data-i18n="login-account">Account Number</label>
+                            <input type="text" id="accountNumber" name="accountNumber" placeholder="12-34-56-7890-12-3456" pattern="[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{4}-[0-9]{2}-[0-9]{4}" required>
+                        </div>
+                        <button type="submit" class="cta-button" data-i18n="login-button">Access Records</button>
+                    </form>
+                    <div class="login-footer">
+                        <p data-i18n="login-no-account">Don't have an account?</p>
+                        <a href="#" class="signup-link" id="show-generate" data-i18n="login-generate">Generate Account</a>
                     </div>
-                    <button type="submit" class="cta-button" data-i18n="login-button">Login</button>
-                </form>
-                <div class="login-footer">
-                    <p data-i18n="login-no-account">Don't have an account?</p>
-                    <a href="#" class="signup-link" data-i18n="login-signup">Sign up</a>
+                </div>
+
+                <!-- Account Generation Form -->
+                <div id="generate-form" class="auth-form" style="display: none;">
+                    <h3 data-i18n="generate-title">Generate New Account</h3>
+                    <form class="generate-account-form">
+                        <div class="form-group">
+                            <label for="new-dob" data-i18n="generate-dob">Date of Birth (YYYY-MM-DD)</label>
+                            <div class="dob-input-container">
+                                <input type="text" id="new-dob-year" class="dob-input" placeholder="YYYY" maxlength="4" pattern="[0-9]{4}">
+                                <span class="dob-separator">-</span>
+                                <input type="text" id="new-dob-month" class="dob-input" placeholder="MM" maxlength="2" pattern="[0-9]{2}">
+                                <span class="dob-separator">-</span>
+                                <input type="text" id="new-dob-day" class="dob-input" placeholder="DD" maxlength="2" pattern="[0-9]{2}">
+                                <input type="hidden" id="new-dob" name="new-dob" required>
+                            </div>
+                            <small class="dob-hint" data-i18n="dob-hint">Enter your date of birth in YYYY-MM-DD format</small>
+                        </div>
+                        <div class="warning-box">
+                            <p data-i18n="generate-warning">⚠️ Important: You will need both your date of birth and the generated account number to access your records. Save them securely!</p>
+                        </div>
+                        <button type="submit" class="cta-button" data-i18n="generate-button">Generate Account Number</button>
+                    </form>
+                    
+                    <!-- Generated Account Display -->
+                    <div id="generated-account" style="display: none;">
+                        <div class="account-display">
+                            <h4 data-i18n="account-generated">Your Account Number:</h4>
+                            <div class="account-number" id="display-account-number"></div>
+                            <div class="save-instructions">
+                                <p data-i18n="save-instructions">Please save this account number along with your date of birth in a secure location. This is the only way to access your medical records.</p>
+                                <button type="button" class="copy-button" id="copy-account" data-i18n="copy-account">Copy Account Number</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="login-footer">
+                        <p data-i18n="have-account">Already have an account?</p>
+                        <a href="#" class="signup-link" id="show-login" data-i18n="back-login">Back to Login</a>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
+    <script src="js/language-switcher.js"></script>
     <script>
-        // Get the saved language from localStorage
-        const savedLanguage = localStorage.getItem('selectedLanguage') || 'ENG';
-        
-        // Define translations just for login page
+        // Enhanced translations for new login system
         const translations = {
             'ENG': {
-                'login-title': 'Login to Your Account',
-                'login-email': 'Email',
-                'login-password': 'Password',
-                'login-remember': 'Remember me',
-                'login-forgot': 'Forgot password?',
-                'login-button': 'Login',
+                'login-title': 'Access Your Medical Records',
+                'login-dob': 'Date of Birth (YYYY-MM-DD)',
+                'login-account': 'Account Number',
+                'login-button': 'Access Records',
                 'login-no-account': 'Don\'t have an account?',
-                'login-signup': 'Sign up'
+                'login-generate': 'Generate Account',
+                'generate-title': 'Generate New Account',
+                'generate-dob': 'Date of Birth (YYYY-MM-DD)',
+                'generate-warning': '⚠️ Important: You will need both your date of birth and the generated account number to access your records. Save them securely!',
+                'generate-button': 'Generate Account Number',
+                'account-generated': 'Your Account Number:',
+                'save-instructions': 'Please save this account number along with your date of birth in a secure location. This is the only way to access your medical records.',
+                'copy-account': 'Copy Account Number',
+                'have-account': 'Already have an account?',
+                'back-login': 'Back to Login',
+                'dob-hint': 'Enter your date of birth in YYYY-MM-DD format'
             },
             'CHN': {
-                'login-title': '登录您的账户',
-                'login-email': '电子邮件',
-                'login-password': '密码',
-                'login-remember': '记住我',
-                'login-forgot': '忘记密码？',
-                'login-button': '登录',
+                'login-title': '访问您的医疗记录',
+                'login-dob': '出生日期 (YYYY-MM-DD)',
+                'login-account': '账号',
+                'login-button': '访问记录',
                 'login-no-account': '没有账户？',
-                'login-signup': '注册'
+                'login-generate': '生成账户',
+                'generate-title': '生成新账户',
+                'generate-dob': '出生日期 (YYYY-MM-DD)',
+                'generate-warning': '⚠️ 重要：您需要出生日期和生成的账号才能访问您的记录。请安全保存！',
+                'generate-button': '生成账号',
+                'account-generated': '您的账号：',
+                'save-instructions': '请将此账号与您的出生日期保存在安全的地方。这是访问您医疗记录的唯一方式。',
+                'copy-account': '复制账号',
+                'have-account': '已有账户？',
+                'back-login': '返回登录',
+                'dob-hint': '请输入您的出生日期，格式为 YYYY-MM-DD'
             },
             'ARB': {
-                'login-title': 'تسجيل الدخول إلى حسابك',
-                'login-email': 'البريد الإلكتروني',
-                'login-password': 'كلمة المرور',
-                'login-remember': 'تذكرني',
-                'login-forgot': 'نسيت كلمة المرور؟',
-                'login-button': 'تسجيل الدخول',
+                'login-title': 'الوصول إلى سجلاتك الطبية',
+                'login-dob': 'تاريخ الميلاد (YYYY-MM-DD)',
+                'login-account': 'رقم الحساب',
+                'login-button': 'الوصول للسجلات',
                 'login-no-account': 'ليس لديك حساب؟',
-                'login-signup': 'التسجيل'
+                'login-generate': 'إنشاء حساب',
+                'generate-title': 'إنشاء حساب جديد',
+                'generate-dob': 'تاريخ الميلاد (YYYY-MM-DD)',
+                'generate-warning': '⚠️ مهم: ستحتاج إلى تاريخ ميلادك ورقم الحساب المُولَّد للوصول إلى سجلاتك. احفظهما بأمان!',
+                'generate-button': 'إنشاء رقم حساب',
+                'account-generated': 'رقم حسابك:',
+                'save-instructions': 'يرجى حفظ رقم الحساب هذا مع تاريخ ميلادك في مكان آمن. هذه هي الطريقة الوحيدة للوصول إلى سجلاتك الطبية.',
+                'copy-account': 'نسخ رقم الحساب',
+                'have-account': 'لديك حساب بالفعل؟',
+                'back-login': 'العودة للتسجيل',
+                'dob-hint': 'أدخل تاريخ ميلادك بصيغة YYYY-MM-DD'
             }
         };
-        
-        // Apply RTL for Arabic
-        if (savedLanguage === 'ARB') {
-            document.body.classList.add('rtl');
-            document.dir = 'rtl';
-        }
-        
-        // Apply translations
-        document.querySelectorAll('[data-i18n]').forEach(element => {
-            const key = element.getAttribute('data-i18n');
-            if (translations[savedLanguage] && translations[savedLanguage][key]) {
-                if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                    element.placeholder = translations[savedLanguage][key];
-                } else {
-                    element.textContent = translations[savedLanguage][key];
+
+        // Apply translations function
+        function applyTranslations(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.placeholder = translations[lang][key];
+                    } else {
+                        element.textContent = translations[lang][key];
+                    }
                 }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Language functionality
+            const savedLanguage = localStorage.getItem('selectedLanguage') || 'ENG';
+            
+            // Apply RTL for Arabic
+            if (savedLanguage === 'ARB') {
+                document.body.classList.add('rtl');
+                document.dir = 'rtl';
             }
-        });
-        
-        // Make sure clicking the logo takes you back to index.html
-        document.querySelector('.logo a').addEventListener('click', function(e) {
-            // We'll let the default behavior happen (going to index.html)
-            // but we'll ensure the language is preserved
-            // No need to prevent default
+            
+            // Update language dropdown display
+            const selectedLanguageSpan = document.querySelector('.selected-language span');
+            if (selectedLanguageSpan) {
+                const languageNames = {
+                    'ENG': 'English',
+                    'CHN': '中文', 
+                    'ARB': 'العربية'
+                };
+                selectedLanguageSpan.textContent = languageNames[savedLanguage];
+            }
+            
+            // Apply initial translations
+            applyTranslations(savedLanguage);
+            
+            // Language dropdown functionality (copy from language-switcher.js)
+            const languageDropdown = document.querySelector('.language-dropdown');
+            const selectedLanguageElement = document.querySelector('.selected-language');
+            const languageOptions = document.querySelector('.language-options');
+            const languageOptionItems = document.querySelectorAll('.language-option');
+            
+            // Toggle dropdown when clicking on selected language
+            if (selectedLanguageElement) {
+                selectedLanguageElement.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    languageDropdown.classList.toggle('open');
+                });
+            }
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (languageDropdown && !languageDropdown.contains(event.target)) {
+                    languageDropdown.classList.remove('open');
+                }
+            });
+            
+            // Language switching functionality
+            if (languageOptionItems) {
+                languageOptionItems.forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const lang = this.getAttribute('data-lang');
+                        const langText = this.textContent;
+                        
+                        // Update selected language text
+                        if (selectedLanguageSpan) {
+                            selectedLanguageSpan.textContent = langText;
+                        }
+                        
+                        // Close dropdown
+                        if (languageDropdown) {
+                            languageDropdown.classList.remove('open');
+                        }
+                        
+                        // Apply RTL for Arabic only
+                        if (lang === 'ARB') {
+                            document.body.classList.add('rtl');
+                            document.dir = 'rtl';
+                        } else {
+                            document.body.classList.remove('rtl');
+                            document.dir = 'ltr';
+                        }
+                        
+                        // Apply translations
+                        applyTranslations(lang);
+                        
+                        // Store the selected language in localStorage
+                        localStorage.setItem('selectedLanguage', lang);
+                    });
+                });
+            }
+            
+            // DOB Input Auto-jumping functionality
+            function setupDOBInputs(prefix) {
+                const yearInput = document.getElementById(`${prefix}-year`);
+                const monthInput = document.getElementById(`${prefix}-month`);
+                const dayInput = document.getElementById(`${prefix}-day`);
+                const hiddenInput = document.getElementById(prefix);
+                
+                function updateHiddenInput() {
+                    const year = yearInput.value.padStart(4, '0');
+                    const month = monthInput.value.padStart(2, '0');
+                    const day = dayInput.value.padStart(2, '0');
+                    
+                    if (year.length === 4 && month.length === 2 && day.length === 2) {
+                        hiddenInput.value = `${year}-${month}-${day}`;
+                    } else {
+                        hiddenInput.value = '';
+                    }
+                }
+                
+                // Auto-jump to next field when current is full
+                yearInput.addEventListener('input', function(e) {
+                    // Only allow numbers
+                    this.value = this.value.replace(/\D/g, '');
+                    if (this.value.length === 4) {
+                        monthInput.focus();
+                    }
+                    updateHiddenInput();
+                });
+                
+                monthInput.addEventListener('input', function(e) {
+                    // Only allow numbers, max 12
+                    this.value = this.value.replace(/\D/g, '');
+                    if (parseInt(this.value) > 12) this.value = '12';
+                    if (this.value.length === 2) {
+                        dayInput.focus();
+                    }
+                    updateHiddenInput();
+                });
+                
+                dayInput.addEventListener('input', function(e) {
+                    // Only allow numbers, max 31
+                    this.value = this.value.replace(/\D/g, '');
+                    if (parseInt(this.value) > 31) this.value = '31';
+                    updateHiddenInput();
+                });
+                
+                // Handle backspace to previous field
+                monthInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace' && this.value === '') {
+                        yearInput.focus();
+                        yearInput.setSelectionRange(yearInput.value.length, yearInput.value.length);
+                    }
+                });
+                
+                dayInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace' && this.value === '') {
+                        monthInput.focus();
+                        monthInput.setSelectionRange(monthInput.value.length, monthInput.value.length);
+                    }
+                });
+            }
+            
+            // Setup DOB inputs for both forms
+            setupDOBInputs('dob');
+            setupDOBInputs('new-dob');
+            
+            // Form switching functionality
+            const loginForm = document.getElementById('login-form');
+            const generateForm = document.getElementById('generate-form');
+            const showGenerateBtn = document.getElementById('show-generate');
+            const showLoginBtn = document.getElementById('show-login');
+            
+            showGenerateBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginForm.style.display = 'none';
+                generateForm.style.display = 'block';
+                document.getElementById('generated-account').style.display = 'none';
+            });
+            
+            showLoginBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                generateForm.style.display = 'none';
+                loginForm.style.display = 'block';
+            });
+            
+            // Account generation functionality
+            function generateAccountNumber() {
+                // Generate 16-digit account number in format XXXX-XXXX-XXXX-XXXX
+                let accountNumber = '';
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        accountNumber += Math.floor(Math.random() * 10);
+                    }
+                    if (i < 3) accountNumber += '-';
+                }
+                return accountNumber;
+            }
+            
+            // Handle account generation form
+            document.querySelector('.generate-account-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                console.log('Form submitted!');
+                
+                const dob = document.getElementById('new-dob').value;
+                console.log('DOB:', dob);
+                if (!dob || dob.length !== 10) {
+                    alert('Please enter a complete date of birth in YYYY-MM-DD format');
+                    return;
+                }
+                
+                try {
+                    console.log('Generating account with DOB:', dob);
+                    const response = await fetch('http://localhost:3000/api/generate-account', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ dob })
+                    });
+                    
+                    const data = await response.json();
+                    console.log('Account generation response:', data);
+                    
+                    if (data.success) {
+                        document.getElementById('display-account-number').textContent = data.accountNumber;
+                        document.getElementById('generated-account').style.display = 'block';
+                        
+                        // Store the generated credentials for easy testing
+                        console.log('Generated credentials:', { dob, accountNumber: data.accountNumber });
+                        console.log('Copy this for login test:', JSON.stringify({ dob, accountNumber: data.accountNumber }));
+                        
+                        // Auto-fill the login form for testing
+                        window.generatedCredentials = { dob, accountNumber: data.accountNumber };
+                        console.log('Stored in window.generatedCredentials for easy testing');
+                    } else {
+                        alert('Error generating account: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error generating account:', error);
+                    alert('Error connecting to server. Please try again.');
+                }
+            });
+            
+            // Copy account number functionality
+            document.getElementById('copy-account').addEventListener('click', function() {
+                const accountNumber = document.getElementById('display-account-number').textContent;
+                navigator.clipboard.writeText(accountNumber).then(function() {
+                    const button = document.getElementById('copy-account');
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 2000);
+                });
+            });
+            
+            // Add direct click handler for debugging
+            document.addEventListener('click', function(e) {
+                console.log('Clicked element:', e.target);
+                if (e.target.matches('[data-i18n="generate-button"]')) {
+                    console.log('Generate button clicked!');
+                }
+            });
+            
+            
+            // Handle login form
+            document.querySelector('.login-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const dob = document.getElementById('dob').value;
+                const accountNumber = document.getElementById('accountNumber').value;
+                
+                console.log('Login attempt:', { dob, accountNumber });
+                
+                if (!dob || dob.length !== 10 || !accountNumber) {
+                    alert('Please enter a complete date of birth (YYYY-MM-DD) and account number');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('http://localhost:3000/api/authenticate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ dob, accountNumber })
+                    });
+                    
+                    const data = await response.json();
+                    console.log('Server response:', data);
+                    
+                    if (data.success) {
+                        // Store DOB in session storage for dashboard access
+                        sessionStorage.setItem('dob', dob);
+                        // Redirect to dashboard with account number in URL
+                        window.location.href = `dashboard.html?account=${accountNumber}`;
+                    } else {
+                        console.error('Authentication failed:', data);
+                        alert('Invalid credentials. Please check your date of birth and account number.');
+                    }
+                } catch (error) {
+                    console.error('Error authenticating:', error);
+                    alert('Error connecting to server. Please try again.');
+                }
+            });
+            
+            // Format account number input to match server format: XX-XX-XX-XXXX-XX-XXXX
+            document.getElementById('accountNumber').addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                
+                // Format as XX-XX-XX-XXXX-XX-XXXX (like the server generates)
+                if (value.length >= 2) value = value.slice(0,2) + '-' + value.slice(2);
+                if (value.length >= 5) value = value.slice(0,5) + '-' + value.slice(5);
+                if (value.length >= 8) value = value.slice(0,8) + '-' + value.slice(8);
+                if (value.length >= 13) value = value.slice(0,13) + '-' + value.slice(13);
+                if (value.length >= 16) value = value.slice(0,16) + '-' + value.slice(16);
+                if (value.length > 21) value = value.slice(0,21); // Limit total length
+                
+                e.target.value = value;
+            });
+            
+            // Test function for browser console
+            window.testLogin = function(dob, accountNumber) {
+                console.log('Testing login with:', { dob, accountNumber });
+                fetch('http://localhost:3000/api/authenticate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dob, accountNumber })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Direct API test result:', data);
+                })
+                .catch(err => console.error('Direct API test error:', err));
+            };
+            
+            // Auto-fill function for testing
+            window.fillLastGenerated = function() {
+                if (window.generatedCredentials) {
+                    const creds = window.generatedCredentials;
+                    const [year, month, day] = creds.dob.split('-');
+                    document.getElementById('dob-year').value = year;
+                    document.getElementById('dob-month').value = month;
+                    document.getElementById('dob-day').value = day;
+                    document.getElementById('dob').value = creds.dob;
+                    document.getElementById('accountNumber').value = creds.accountNumber;
+                    console.log('Filled form with generated credentials');
+                } else {
+                    console.log('No generated credentials found. Generate an account first.');
+                }
+            };
         });
     </script>
 </body>
