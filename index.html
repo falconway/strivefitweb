@@ -29,13 +29,13 @@
                 <div class="header-actions">
                     <div class="language-dropdown">
                         <div class="selected-language">
-                            <span>English</span>
+                            <span data-i18n="lang-english">English</span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron-down"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </div>
                         <div class="language-options">
-                            <div class="language-option" data-lang="ENG">English</div>
-                            <div class="language-option" data-lang="CHN">中文</div>
-                            <div class="language-option" data-lang="ARB">العربية</div>
+                            <div class="language-option" data-lang="ENG" data-i18n="lang-english">English</div>
+                            <div class="language-option" data-lang="CHN" data-i18n="lang-chinese">中文</div>
+                            <div class="language-option" data-lang="ARB" data-i18n="lang-arabic">العربية</div>
                         </div>
                     </div>
                 </div>
@@ -268,27 +268,5 @@
 
     <!-- At the bottom of the file, update the script section -->
     <script src="js/language-switcher.js"></script>
-    <script>
-        // Check if there's a saved language preference
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedLanguage = localStorage.getItem('selectedLanguage');
-            if (savedLanguage) {
-                // Find the language option with the saved language
-                const options = document.querySelectorAll('.language-option');
-                const option = Array.from(options).find(opt => 
-                    opt.getAttribute('data-lang') === savedLanguage
-                );
-                
-                if (option) {
-                    // Manually trigger a click on that option
-                    option.click();
-                }
-            }
-            
-            // Add debug logging
-            console.log('Language initialization complete. Current language:', 
-                localStorage.getItem('selectedLanguage') || 'Default (ENG)');
-        });
-    </script>
 </body>
 </html>

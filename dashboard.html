@@ -629,7 +629,7 @@
 
         async function processDocument(docId) {
             try {
-                const response = await fetch(`${API_BASE}/process-document/${docId}`, {
+                const response = await fetch(`${API_BASE}/documents/${docId}/process`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userCredentials)
@@ -979,7 +979,7 @@
             });
         });
 
-        async function viewDocument(docId, docName, mimetype, version = 'original') {
+        async function viewDocument(docId, docName, mimetype, version = 'translated') {
             const viewer = document.getElementById('file-viewer');
             const viewerTitle = document.getElementById('viewer-title');
             const viewerActions = document.getElementById('viewer-actions');
@@ -999,7 +999,14 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userCredentials)
                 });
-                if (!response.ok) throw new Error('Failed to download file for preview.');
+                if (!response.ok) {
+                    if (version !== 'original') {
+                        // Fallback to original if translated/processed not found
+                        viewDocument(docId, docName, mimetype, 'original');
+                        return;
+                    }
+                    throw new Error('Failed to download file for preview.');
+                }
 
                 const blob = await response.blob();
                 const effectiveMimetype = version === 'original' ? mimetype : 'text/markdown';

@@ -299,6 +299,13 @@ app.post('/api/upload-document', upload.single('document'), async (req, res) => 
                 ocr: { status: 'pending' },
                 structuring: { status: 'pending' },
                 translation: { status: 'pending' }
+            },
+            processedVersions: {
+                ocrText: null,
+                markdownOriginal: null,
+                jsonOriginal: null,
+                markdownEnglish: null,
+                jsonEnglish: null
             }
         };
         
@@ -727,11 +734,13 @@ app.post('/api/view-document/:documentId/:version', async (req, res) => {
             res.setHeader('Content-Type', document.mimetype);
             res.sendFile(filePath);
         } else if (version === 'processed') {
+            const filePath = path.join(UPLOADS_DIR, document.processedVersions.markdownOriginal);
             res.setHeader('Content-Type', 'text/markdown');
-            res.send(`# Processed: ${document.originalName}\n\nThis is the structured Markdown version of the document.`);
+            res.sendFile(filePath);
         } else if (version === 'translated') {
+            const filePath = path.join(UPLOADS_DIR, document.processedVersions.markdownEnglish);
             res.setHeader('Content-Type', 'text/markdown');
-            res.send(`# Translated: ${document.originalName}\n\nThis is the English translation of the document.`);
+            res.sendFile(filePath);
         } else {
             res.status(400).json({ error: 'Invalid version requested' });
         }
@@ -770,16 +779,33 @@ app.post('/api/batch-process-documents', async (req, res) => {
             if (document) {
                 // Simulate processing pipeline
                 document.processingStatus.ocr.status = 'processing';
-                setTimeout(() => {
+                setTimeout(async () => {
                     document.processingStatus.ocr.status = 'completed';
+                    document.processedVersions.ocrText = `${document.id}-ocr.txt`;
+                    await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.ocrText), `Mock OCR text for ${document.originalName}`);
+                    
                     document.processingStatus.structuring.status = 'processing';
-                    setTimeout(() => {
+                    await saveAccounts(accounts);
+
+                    setTimeout(async () => {
                         document.processingStatus.structuring.status = 'completed';
+                        document.processedVersions.markdownOriginal = `${document.id}-ocr.md`;
+                        document.processedVersions.jsonOriginal = `${document.id}-ocr.json`;
+                        await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.markdownOriginal), `# Mock Markdown for ${document.originalName}`);
+                        await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.jsonOriginal), JSON.stringify({ "title": `Mock JSON for ${document.originalName}` }));
+
                         document.processingStatus.translation.status = 'processing';
-                        setTimeout(() => {
+                        await saveAccounts(accounts);
+
+                        setTimeout(async () => {
                             document.processingStatus.translation.status = 'completed';
+                            document.processedVersions.markdownEnglish = `${document.id}-translated.md`;
+                            document.processedVersions.jsonEnglish = `${document.id}-translated.json`;
+                            await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.markdownEnglish), `# Mock English Translation for ${document.originalName}`);
+                            await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.jsonEnglish), JSON.stringify({ "title": `Mock English Translation for ${document.originalName}` }));
+                            
                             document.processed = true;
-                            saveAccounts(accounts);
+                            await saveAccounts(accounts);
                         }, 2000);
                     }, 2000);
                 }, 2000);
@@ -790,6 +816,75 @@ app.post('/api/batch-process-documents', async (req, res) => {
 
     } catch (error) {
         console.error('Error batch processing documents:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/documents/:documentId/process', async (req, res) => {
+    try {
+        const { dob, accountNumber } = req.body;
+        const { documentId } = req.params;
+
+        if (!dob || !accountNumber) {
+            return res.status(400).json({ error: 'Date of birth and account number are required' });
+        }
+
+        const accounts = await loadAccounts();
+        const account = accounts[accountNumber];
+
+        if (!account) {
+            return res.status(401).json({ error: 'Invalid account' });
+        }
+
+        const combinedHash = hashData(dob + accountNumber);
+        if (combinedHash !== account.combinedHash) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const document = account.documents.find(doc => doc.id === documentId);
+        if (!document) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        // Simulate processing pipeline
+        document.processingStatus.ocr.status = 'processing';
+        await saveAccounts(accounts);
+
+        setTimeout(async () => {
+            document.processingStatus.ocr.status = 'completed';
+            document.processedVersions.ocrText = `${document.id}-ocr.txt`;
+            await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.ocrText), `Mock OCR text for ${document.originalName}`);
+            
+            document.processingStatus.structuring.status = 'processing';
+            await saveAccounts(accounts);
+
+            setTimeout(async () => {
+                document.processingStatus.structuring.status = 'completed';
+                document.processedVersions.markdownOriginal = `${document.id}-ocr.md`;
+                document.processedVersions.jsonOriginal = `${document.id}-ocr.json`;
+                await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.markdownOriginal), `# Mock Markdown for ${document.originalName}`);
+                await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.jsonOriginal), JSON.stringify({ "title": `Mock JSON for ${document.originalName}` }));
+
+                document.processingStatus.translation.status = 'processing';
+                await saveAccounts(accounts);
+
+                setTimeout(async () => {
+                    document.processingStatus.translation.status = 'completed';
+                    document.processedVersions.markdownEnglish = `${document.id}-translated.md`;
+                    document.processedVersions.jsonEnglish = `${document.id}-translated.json`;
+                    await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.markdownEnglish), `# Mock English Translation for ${document.originalName}`);
+                    await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.jsonEnglish), JSON.stringify({ "title": `Mock English Translation for ${document.originalName}` }));
+                    
+                    document.processed = true;
+                    await saveAccounts(accounts);
+                }, 2000);
+            }, 2000);
+        }, 2000);
+
+        res.json({ success: true, message: 'Processing started' });
+
+    } catch (error) {
+        console.error('Error processing document:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
