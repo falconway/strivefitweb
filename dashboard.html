@@ -9,6 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Viewer Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
         .dashboard-section {
             min-height: calc(100vh - 70px);
@@ -38,18 +43,17 @@
         .dashboard-bottom {
             flex: 1;
             display: flex;
+            flex-direction: column;
             gap: 20px;
             min-height: 0;
         }
         
         .document-list-panel {
-            flex: 1;
             background: white;
             border-radius: 8px;
             border: 1px solid #dee2e6;
             display: flex;
             flex-direction: column;
-            min-height: 0;
         }
         
         .document-panel-header {
@@ -67,13 +71,21 @@
             gap: 15px;
             flex-grow: 1;
         }
-        .header-left h3 {
-            font-size: 18px;
-            margin: 0;
+        .search-bar {
+            position: relative;
         }
-        .header-meta {
-            font-size: 12px;
-            color: #6c757d;
+        .search-input {
+            padding: 8px 12px 8px 30px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            min-width: 250px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
         }
         .header-right {
             display: flex;
@@ -84,7 +96,7 @@
             font-size: 14px;
             color: #6c757d;
         }
-        .batch-download-btn, .batch-delete-btn {
+        .batch-download-btn, .batch-delete-btn, .batch-process-btn {
             background: #fff;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -93,12 +105,12 @@
             display: flex;
             align-items: center;
         }
-        .batch-download-btn:hover, .batch-delete-btn:hover {
+        .batch-download-btn:hover, .batch-delete-btn:hover, .batch-process-btn:hover {
             background: #f0f0f0;
         }
 
         .documents-table-container {
-            flex: 1;
+            height: 220px; /* Approx 5 rows */
             overflow-y: auto;
         }
         .documents-table {
@@ -128,19 +140,34 @@
             background-color: #d4edda !important;
         }
         .checkbox-cell { width: 40px; }
-        .actions-cell { width: 100px; text-align: right; }
+        .actions-cell { width: 120px; text-align: right; }
         
-        .status-cell .status {
-            display: inline-flex;
+        .status-cell {
+            width: 250px;
+        }
+        .processing-status {
+            display: flex;
+            gap: 5px;
             align-items: center;
-            gap: 6px;
+        }
+        .status-step {
+            font-size: 11px;
             padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 12px;
+            border-radius: 10px;
             font-weight: 500;
         }
-        .status.uploaded { background-color: #e7f3ff; color: #007bff; }
-        .status.processed { background-color: #d4edda; color: #155724; }
+        .status-step.completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-step.processing {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-step.pending {
+            background-color: #e9ecef;
+            color: #6c757d;
+        }
         
         .document-actions .action-btn {
             background: none;
@@ -157,7 +184,7 @@
         }
         
         .document-viewer-panel {
-            flex: 1;
+            flex-grow: 1;
             background: white;
             border-radius: 8px;
             border: 1px solid #dee2e6;
@@ -253,131 +280,6 @@
             transition: width 0.3s ease;
         }
         
-        .documents-list {
-            flex: 1;
-            overflow-y: auto;
-        }
-        
-        .documents-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .documents-controls {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .selection-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .select-all-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-        
-        .batch-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .batch-download-btn,
-        .batch-delete-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .batch-download-btn {
-            background: #28a745;
-            color: white;
-        }
-        
-        .batch-delete-btn {
-            background: #dc3545;
-            color: white;
-        }
-        
-        .document-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            background: white;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .document-item:hover {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .document-item.selected {
-            background: #e7f3ff;
-            border-color: #007bff;
-        }
-        
-        .document-item.active {
-            background: #fff3cd;
-            border-color: #ffc107;
-        }
-        
-        .document-select {
-            margin-right: 15px;
-        }
-        
-        .document-info {
-            flex: 1;
-        }
-        
-        .document-name {
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        
-        .document-meta {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .document-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .download-btn,
-        .delete-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .download-btn {
-            background: #28a745;
-            color: white;
-        }
-        
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-        }
-        
-        
-        
         .viewer-header {
             display: flex;
             justify-content: space-between;
@@ -435,50 +337,21 @@
             opacity: 0.5;
         }
         
-        @media (max-width: 768px) {
-            .dashboard-container {
-                height: auto;
-            }
-            
-            .dashboard-top {
-                height: auto;
-                margin-bottom: 20px;
-            }
-            
-            .documents-title-section {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 20px;
-            }
-            
-            .document-stats-overview {
-                flex-wrap: wrap;
-                justify-content: flex-start;
-            }
-            
-            .stats-card {
-                min-width: 80px;
-            }
-            
-            .stats-card.last-upload {
-                min-width: 120px;
-            }
-            
-            .dashboard-bottom {
-                flex-direction: column;
-                gap: 20px;
-            }
-            
-            .document-list-panel,
-            .document-viewer-panel {
-                min-height: 300px;
-            }
-            
-            .documents-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
+        #file-viewer {
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        #pdf-canvas {
+            width: 100%;
+        }
+        .xlsx-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .xlsx-table th, .xlsx-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
         }
     </style>
 </head>
@@ -544,26 +417,31 @@
                     </div>
                 </div>
 
-                <!-- Bottom - Document Display (left) + Document Preview (right) -->
+                <!-- Bottom - Document Display and Preview -->
                 <div class="dashboard-bottom">
-                    <!-- Left Half - Documents List -->
                     <div class="document-list-panel">
                         <div class="document-panel-header">
                             <div class="header-left">
                                 <h3 data-i18n="documents-title">Your Documents</h3>
-                                <div class="header-meta">
-                                    <span id="total-docs-display">0 documents</span>
-                                    &bull;
-                                    <span>Last updated: <span id="last-update-time">N/A</span></span>
+                                <div class="search-bar">
+                                    <span class="search-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                        </svg>
+                                    </span>
+                                    <input type="text" id="search-input" class="search-input" data-i18n-placeholder="search-placeholder" placeholder="Search documents...">
                                 </div>
                             </div>
                             <div class="header-right" id="batch-actions-container" style="display: none;">
-                                <span class="selection-count" id="selection-count">0 selected</span>
-                                <button class="batch-download-btn" id="batch-download-btn" title="Download Selected">
+                                <span class="selection-count" id="selection-count" data-i18n-format="selected-count" data-i18n-value="0">0 selected</span>
+                                <button class="batch-download-btn" id="batch-download-btn" data-i18n-title="download-selected" title="Download Selected">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                                 </button>
-                                <button class="batch-delete-btn" id="batch-delete-btn" title="Delete Selected">
+                                <button class="batch-delete-btn" id="batch-delete-btn" data-i18n-title="delete-selected" title="Delete Selected">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
+                                <button class="batch-process-btn" id="batch-process-btn" data-i18n-title="process-selected" title="Process Selected">
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 96 960 960" width="18"><path d="M219 896q-21 0-35.5-14.5T169 846V330q0-21 14.5-35.5T219 281h331l-86 86H259v434h442V599l86-86v333q0 21-14.5 35.5T741 896H219Zm228-228-58-58 183-183-183-183 58-58 241 241-241 241Z"/></svg>
                                 </button>
                             </div>
                         </div>
@@ -572,10 +450,10 @@
                                 <thead>
                                     <tr>
                                         <th class="checkbox-cell"><input type="checkbox" id="select-all-header-checkbox"></th>
-                                        <th>Name</th>
-                                        <th>Date Uploaded</th>
-                                        <th>Status</th>
-                                        <th class="actions-cell">Actions</th>
+                                        <th data-i18n="table-header-name">Name</th>
+                                        <th data-i18n="table-header-date">Date Uploaded</th>
+                                        <th data-i18n="table-header-status">Status</th>
+                                        <th class="actions-cell" data-i18n="table-header-actions">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="documents-table-body">
@@ -587,8 +465,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Right Half - Document Viewer/Preview -->
                     <div class="document-viewer-panel">
                         <div class="viewer-header">
                             <h3 class="viewer-title" id="viewer-title" data-i18n="no-document-selected">No document selected</h3>
@@ -599,7 +475,8 @@
                             </div>
                         </div>
                         <div class="viewer-content" id="viewer-content">
-                            <div class="viewer-placeholder">
+                            <div id="file-viewer"></div>
+                            <div class="viewer-placeholder" style="display: none;">
                                 <svg viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
                                 </svg>
@@ -617,6 +494,7 @@
         // Global variables
         const API_BASE = 'http://localhost:3000/api';
         let userCredentials = null;
+        let allDocuments = [];
 
         // Authentication check
         function checkAuthentication() {
@@ -681,7 +559,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    displayDocuments(data.documents);
+                    allDocuments = data.documents;
+                    displayDocuments(allDocuments);
                 } else {
                     throw new Error(data.error || 'Failed to load documents');
                 }
@@ -707,19 +586,35 @@
                 tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #666;">No documents uploaded yet</td></tr>`;
             } else {
                 const sortedDocuments = documents.sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
-                tableBody.innerHTML = sortedDocuments.map(doc => {
+                tableBody.innerHTML = sortedDocuments.map((doc, index) => {
                     const uploadDate = new Date(doc.uploadDate).toLocaleDateString();
-                    const isProcessed = doc.processed || false;
+                    
+                    // Mock processing status based on index for variety
+                    const statuses = [
+                        { ocr: 'completed', structuring: 'completed', translation: 'completed' },
+                        { ocr: 'completed', structuring: 'processing', translation: 'pending' },
+                        { ocr: 'processing', structuring: 'pending', translation: 'pending' },
+                        { ocr: 'pending', structuring: 'pending', translation: 'pending' },
+                    ];
+                    const mockStatus = statuses[index % 4];
+
                     return `
-                        <tr data-doc-id="${doc.id}">
+                        <tr data-doc-id="${doc.id}" data-doc-name="${escapeHtml(doc.originalName)}" data-mimetype="${doc.mimetype || ''}" style="cursor:pointer;">
                             <td class="checkbox-cell"><input type="checkbox" class="document-select" data-doc-id="${doc.id}"></td>
                             <td>${escapeHtml(doc.originalName)}</td>
                             <td>${uploadDate}</td>
-                            <td class="status-cell"><span class="status ${isProcessed ? 'processed' : 'uploaded'}">${isProcessed ? 'Processed' : 'Uploaded'}</span></td>
+                            <td class="status-cell">
+                                <div class="processing-status">
+                                    <span class="status-step ${mockStatus.ocr}">OCR</span>
+                                    <span class="status-step ${mockStatus.structuring}">Structuring</span>
+                                    <span class="status-step ${mockStatus.translation}">Translation</span>
+                                </div>
+                            </td>
                             <td class="actions-cell">
                                 <div class="document-actions">
-                                    <button class="action-btn download-btn" title="Download" onclick="downloadDocument('${doc.id}')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg></button>
-                                    <button class="action-btn delete-btn" title="Delete" onclick="deleteDocument('${doc.id}', '${escapeHtml(doc.originalName)}')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+                                    <button class="action-btn process-btn" title="Process" onclick="event.stopPropagation(); processDocument('${doc.id}')"><svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 96 960 960" width="18"><path d="M219 896q-21 0-35.5-14.5T169 846V330q0-21 14.5-35.5T219 281h331l-86 86H259v434h442V599l86-86v333q0 21-14.5 35.5T741 896H219Zm228-228-58-58 183-183-183-183 58-58 241 241-241 241Z"/></svg></button>
+                                    <button class="action-btn download-btn" title="Download" onclick="event.stopPropagation(); downloadDocument('${doc.id}')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg></button>
+                                    <button class="action-btn delete-btn" title="Delete" onclick="event.stopPropagation(); deleteDocument('${doc.id}', '${escapeHtml(doc.originalName)}')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                                 </div>
                             </td>
                         </tr>
@@ -732,9 +627,35 @@
             updateSelection(); // Reset selection on load
         }
 
+        async function processDocument(docId) {
+            try {
+                const response = await fetch(`${API_BASE}/process-document/${docId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userCredentials)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Document processing started.');
+                    // The backend will update the status, so we just need to refresh the list periodically
+                    setTimeout(loadDocuments, 2100); // Refresh after OCR is expected to be done
+                    setTimeout(loadDocuments, 4200); // Refresh after structuring is expected to be done
+                    setTimeout(loadDocuments, 6300); // Refresh after translation is expected to be done
+                } else {
+                    throw new Error(data.error || 'Failed to start processing');
+                }
+            } catch (error) {
+                console.error('Error starting document processing:', error);
+                alert('Error starting document processing.');
+            }
+        }
+
         function updateDocumentStats(documents) {
-            document.getElementById('total-docs-display').textContent = `${documents.length} documents`;
-            document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString();
+            const totalDocsDisplay = document.getElementById('total-docs-display');
+            const lastUpdateTime = document.getElementById('last-update-time');
+            
+            if(totalDocsDisplay) totalDocsDisplay.textContent = `${documents.length} documents`;
+            if(lastUpdateTime) lastUpdateTime.textContent = new Date().toLocaleTimeString();
         }
 
         // Selection management
@@ -917,6 +838,8 @@
             const headerCheckbox = document.getElementById('select-all-header-checkbox');
             const batchDownloadBtn = document.getElementById('batch-download-btn');
             const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const batchProcessBtn = document.getElementById('batch-process-btn');
+            const searchInput = document.getElementById('search-input');
 
             uploadBtnMain.addEventListener('click', () => uploadDialog.classList.add('show'));
             closeUploadDialog.addEventListener('click', () => uploadDialog.classList.remove('show'));
@@ -989,6 +912,36 @@
                 }
             });
 
+            batchProcessBtn.addEventListener('click', async () => {
+                const documentIds = Array.from(document.querySelectorAll('.document-select:checked')).map(cb => cb.dataset.docId);
+                if (documentIds.length === 0) return;
+                if (!confirm(`Are you sure you want to process ${documentIds.length} selected document(s)?`)) return;
+
+                try {
+                    const response = await fetch(`${API_BASE}/batch-process-documents`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...userCredentials, documentIds })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('Batch processing started.');
+                        setTimeout(loadDocuments, 6300); // Refresh after all stages
+                    } else {
+                        throw new Error(data.error || 'Batch process failed');
+                    }
+                } catch (error) {
+                    console.error('Error during batch processing:', error);
+                    alert('Error processing documents.');
+                }
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredDocs = allDocuments.filter(doc => doc.originalName.toLowerCase().includes(searchTerm));
+                displayDocuments(filteredDocs);
+            });
+
             const tableBody = document.getElementById('documents-table-body');
             tableBody.addEventListener('click', (e) => {
                 const row = e.target.closest('tr');
@@ -1026,14 +979,22 @@
             });
         });
 
-        async function viewDocument(docId, docName, mimetype) {
+        async function viewDocument(docId, docName, mimetype, version = 'original') {
             const viewer = document.getElementById('file-viewer');
             const viewerTitle = document.getElementById('viewer-title');
+            const viewerActions = document.getElementById('viewer-actions');
+            
             viewerTitle.textContent = docName;
             viewer.innerHTML = '<p>Loading preview...</p>';
+            viewerActions.style.display = 'flex';
+
+            // Update active button
+            viewerActions.querySelectorAll('.viewer-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === version);
+            });
 
             try {
-                const response = await fetch(`${API_BASE}/download-document/${docId}`, {
+                const response = await fetch(`${API_BASE}/view-document/${docId}/${version}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userCredentials)
@@ -1041,13 +1002,27 @@
                 if (!response.ok) throw new Error('Failed to download file for preview.');
 
                 const blob = await response.blob();
-                renderFile(viewer, blob, mimetype, docName);
+                const effectiveMimetype = version === 'original' ? mimetype : 'text/markdown';
+                renderFile(viewer, blob, effectiveMimetype, docName);
 
             } catch (error) {
                 console.error('Error loading document preview:', error);
                 viewer.innerHTML = `<p style="color:red;">Error loading preview: ${error.message}</p>`;
             }
         }
+
+        // Add event listeners to viewer buttons
+        document.getElementById('viewer-actions').addEventListener('click', (e) => {
+            if (e.target.matches('.viewer-btn')) {
+                const version = e.target.dataset.view;
+                const docId = document.querySelector('.document-item.active')?.dataset.docId;
+                const docName = document.querySelector('.document-item.active')?.dataset.docName;
+                const mimetype = document.querySelector('.document-item.active')?.dataset.mimetype;
+                if (docId) {
+                    viewDocument(docId, docName, mimetype, version);
+                }
+            }
+        });
 
         function renderFile(container, blob, mimetype, fileName) {
             container.innerHTML = ''; // Clear previous content

@@ -5,12 +5,14 @@ const fs = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
 const archiver = require('archiver');
+const bodyParser = require('body-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+app.use(bodyParser.json());
 app.use(express.json({ 
     limit: '50mb',
     charset: 'utf-8'
@@ -291,7 +293,13 @@ app.post('/api/upload-document', upload.single('document'), async (req, res) => 
             mimetype: req.file.mimetype,
             size: req.file.size,
             description: description || '',
-            uploadDate: new Date().toISOString()
+            uploadDate: new Date().toISOString(),
+            processed: false,
+            processingStatus: {
+                ocr: { status: 'pending' },
+                structuring: { status: 'pending' },
+                translation: { status: 'pending' }
+            }
         };
         
         // Add document to account
@@ -345,7 +353,9 @@ app.post('/api/get-documents', async (req, res) => {
             originalName: doc.originalName,
             description: doc.description,
             uploadDate: doc.uploadDate,
-            size: doc.size
+            size: doc.size,
+            processed: doc.processed,
+            processingStatus: doc.processingStatus
         }));
         
         res.json({ 
@@ -610,7 +620,7 @@ app.post('/api/batch-download-documents', async (req, res) => {
                 archive.file(filePath, { name: document.originalName });
                 console.log('✅ Added to ZIP:', document.originalName);
             } catch (err) {
-                console.log('⚠️ File not found, skipping:', document.originalName);
+                console.log('⚠��� File not found, skipping:', document.originalName);
                 // Add an error file instead
                 archive.append(`File not found: ${document.originalName}`, { name: `ERROR_${document.originalName}.txt` });
             }
@@ -625,6 +635,162 @@ app.post('/api/batch-download-documents', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({ error: 'Internal server error' });
         }
+    }
+});
+
+// Process document
+app.post('/api/process-document/:documentId', async (req, res) => {
+    try {
+        const { dob, accountNumber } = req.body;
+        const { documentId } = req.params;
+
+        if (!dob || !accountNumber) {
+            return res.status(400).json({ error: 'Date of birth and account number are required' });
+        }
+
+        const accounts = await loadAccounts();
+        const account = accounts[accountNumber];
+
+        if (!account) {
+            return res.status(401).json({ error: 'Invalid account' });
+        }
+
+        const combinedHash = hashData(dob + accountNumber);
+        if (combinedHash !== account.combinedHash) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const document = account.documents.find(doc => doc.id === documentId);
+        if (!document) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        // Simulate processing pipeline
+        document.processingStatus.ocr.status = 'processing';
+        await saveAccounts(accounts);
+
+        setTimeout(async () => {
+            document.processingStatus.ocr.status = 'completed';
+            document.processingStatus.structuring.status = 'processing';
+            await saveAccounts(accounts);
+
+            setTimeout(async () => {
+                document.processingStatus.structuring.status = 'completed';
+                document.processingStatus.translation.status = 'processing';
+                await saveAccounts(accounts);
+
+                setTimeout(async () => {
+                    document.processingStatus.translation.status = 'completed';
+                    document.processed = true;
+                    await saveAccounts(accounts);
+                }, 2000);
+            }, 2000);
+        }, 2000);
+
+        res.json({ success: true, message: 'Processing started' });
+
+    } catch (error) {
+        console.error('Error processing document:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// View document version
+app.post('/api/view-document/:documentId/:version', async (req, res) => {
+    try {
+        const { dob, accountNumber } = req.body;
+        const { documentId, version } = req.params;
+
+        if (!dob || !accountNumber) {
+            return res.status(400).json({ error: 'Date of birth and account number are required' });
+        }
+
+        const accounts = await loadAccounts();
+        const account = accounts[accountNumber];
+
+        if (!account) {
+            return res.status(401).json({ error: 'Invalid account' });
+        }
+
+        const combinedHash = hashData(dob + accountNumber);
+        if (combinedHash !== account.combinedHash) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const document = account.documents.find(doc => doc.id === documentId);
+        if (!document) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        if (version === 'original') {
+            const filePath = path.join(UPLOADS_DIR, document.filename);
+            res.setHeader('Content-Type', document.mimetype);
+            res.sendFile(filePath);
+        } else if (version === 'processed') {
+            res.setHeader('Content-Type', 'text/markdown');
+            res.send(`# Processed: ${document.originalName}\n\nThis is the structured Markdown version of the document.`);
+        } else if (version === 'translated') {
+            res.setHeader('Content-Type', 'text/markdown');
+            res.send(`# Translated: ${document.originalName}\n\nThis is the English translation of the document.`);
+        } else {
+            res.status(400).json({ error: 'Invalid version requested' });
+        }
+
+    } catch (error) {
+        console.error('Error viewing document version:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+
+// Batch process documents
+app.post('/api/batch-process-documents', async (req, res) => {
+    try {
+        const { dob, accountNumber, documentIds } = req.body;
+
+        if (!dob || !accountNumber || !documentIds || !Array.isArray(documentIds)) {
+            return res.status(400).json({ error: 'Date of birth, account number, and document IDs array are required' });
+        }
+
+        const accounts = await loadAccounts();
+        const account = accounts[accountNumber];
+
+        if (!account) {
+            return res.status(401).json({ error: 'Invalid account' });
+        }
+
+        const combinedHash = hashData(dob + accountNumber);
+        if (combinedHash !== account.combinedHash) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        for (const documentId of documentIds) {
+            const document = account.documents.find(doc => doc.id === documentId);
+            if (document) {
+                // Simulate processing pipeline
+                document.processingStatus.ocr.status = 'processing';
+                setTimeout(() => {
+                    document.processingStatus.ocr.status = 'completed';
+                    document.processingStatus.structuring.status = 'processing';
+                    setTimeout(() => {
+                        document.processingStatus.structuring.status = 'completed';
+                        document.processingStatus.translation.status = 'processing';
+                        setTimeout(() => {
+                            document.processingStatus.translation.status = 'completed';
+                            document.processed = true;
+                            saveAccounts(accounts);
+                        }, 2000);
+                    }, 2000);
+                }, 2000);
+            }
+        }
+        await saveAccounts(accounts);
+        res.json({ success: true, message: 'Batch processing started' });
+
+    } catch (error) {
+        console.error('Error batch processing documents:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

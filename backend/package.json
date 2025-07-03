@@ -9,16 +9,22 @@
     "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "archiver": "^6.0.2",
+    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "multer": "^1.4.5-lts.1",
+    "express": "^4.21.2",
     "jszip": "^3.10.1",
-    "archiver": "^6.0.1"
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"
   },
-  "keywords": ["medical", "telemedicine", "document-management", "healthcare"],
+  "keywords": [
+    "medical",
+    "telemedicine",
+    "document-management",
+    "healthcare"
+  ],
   "author": "Strive & Fit Co.",
   "license": "MIT"
 }
