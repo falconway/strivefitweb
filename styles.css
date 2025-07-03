@@ -688,3 +688,207 @@ footer {
 .rtl .header-actions {
     flex-direction: row-reverse;
 }
+
+
+/* RTL Support for Arabic */
+body.rtl {
+    direction: rtl;
+}
+
+.rtl .nav-links {
+    flex-direction: row-reverse;
+}
+
+.rtl .logo a {
+    flex-direction: row-reverse;
+}
+
+.rtl .logo-shape {
+    margin-right: 0;
+    margin-left: 10px;
+}
+
+.rtl .step:hover,
+.rtl .service-card:hover {
+    transform: translateY(-10px);
+}
+
+.rtl .footer-content {
+    direction: rtl;
+}
+
+.rtl .social-links {
+    justify-content: flex-start;
+}
+
+.rtl .form-group label {
+    text-align: right;
+}
+
+.rtl .selected-language {
+    flex-direction: row-reverse;
+}
+
+.rtl .chevron-down {
+    margin-left: 0;
+    margin-right: 4px;
+}
+
+.rtl .header-actions {
+    flex-direction: row-reverse;
+}
+
+.rtl .about-content {
+    flex-direction: row-reverse;
+}
+
+.rtl .about-image {
+    margin-right: 0;
+    margin-left: 60px;
+}
+
+.rtl .contact-content {
+    direction: rtl;
+}
+
+.rtl .contact-form {
+    text-align: right;
+}
+
+.rtl .form-group label {
+    text-align: right;
+}
+
+.rtl .cta-button {
+    float: right;
+}
+
+.rtl .footer-links {
+    text-align: right;
+}
+
+.rtl .footer-column ul {
+    padding-right: 0;
+}
+
+.rtl .social-links {
+    justify-content: flex-start;
+}
+
+.rtl .copyright {
+    text-align: center;
+}
+
+.upload-btn-main {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.upload-btn-main:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+}
+
+.upload-dialog {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 400px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    display: none;
+    flex-direction: column;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform: translateY(20px);
+    opacity: 0;
+}
+
+.upload-dialog.show {
+    display: flex;
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.upload-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.upload-dialog-header h4 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.upload-dialog-body {
+    padding: 20px;
+}
+
+.drop-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.drop-zone.dragover {
+    border-color: #007bff;
+    background: #e7f3ff;
+}
+
+.upload-progress-container {
+    margin-top: 20px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.progress-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.progress-item-info {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+}
+
+.progress-bar-container {
+    width: 100px;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    margin-left: 10px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: #28a745;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+}

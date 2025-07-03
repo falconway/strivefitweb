@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
-// Add this to your script.js file
+// Add this to your existing script.js file
 document.addEventListener('DOMContentLoaded', function() {
     // Update the Get Started button to include language parameter
     function updateGetStartedLink() {
