@@ -25,10 +25,30 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Load accounts data from JSON file
-    const dataPath = path.join(process.cwd(), 'backend/data/accounts.json');
-    const data = await fs.readFile(dataPath, 'utf8');
-    const accounts = JSON.parse(data);
+    // Try different paths for Vercel deployment
+    let accounts = {};
+    let accountsLoaded = false;
+    
+    const possiblePaths = [
+      path.join(process.cwd(), 'backend/data/accounts.json'),
+      path.join(process.cwd(), 'data/accounts.json'),
+      path.join('/tmp', 'accounts.json')
+    ];
+    
+    for (const tryPath of possiblePaths) {
+      try {
+        const data = await fs.readFile(tryPath, 'utf8');
+        accounts = JSON.parse(data);
+        accountsLoaded = true;
+        break;
+      } catch (error) {
+        continue;
+      }
+    }
+    
+    if (!accountsLoaded) {
+      return res.status(401).json({ error: 'Authentication system unavailable' });
+    }
     
     const account = accounts[accountNumber];
     

@@ -21,26 +21,50 @@ export default async function handler(req, res) {
     }
 
     try {
-        // For now, we'll simulate the upload since file handling in Vercel is complex
-        // In a real implementation, you'd store files in Vercel Blob or external storage
-        
         const { dob, accountNumber, fileName, fileSize, fileType, description } = req.body;
 
         if (!dob || !accountNumber || !fileName) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Load accounts data
-        const dataPath = path.join(process.cwd(), 'backend/data/accounts.json');
+        // Try different paths for Vercel deployment
         let accounts = {};
+        let dataPath;
         
-        try {
-            const data = await fs.readFile(dataPath, 'utf8');
-            accounts = JSON.parse(data);
-        } catch (error) {
-            // File doesn't exist, create it
-            await fs.mkdir(path.dirname(dataPath), { recursive: true });
+        // Try to find accounts.json in different locations
+        const possiblePaths = [
+            path.join(process.cwd(), 'backend/data/accounts.json'),
+            path.join(process.cwd(), 'data/accounts.json'),
+            path.join('/tmp', 'accounts.json')
+        ];
+        
+        let accountsLoaded = false;
+        
+        for (const tryPath of possiblePaths) {
+            try {
+                const data = await fs.readFile(tryPath, 'utf8');
+                accounts = JSON.parse(data);
+                dataPath = tryPath;
+                accountsLoaded = true;
+                break;
+            } catch (error) {
+                // Continue to next path
+                continue;
+            }
+        }
+        
+        // If no existing file found, try to create in /tmp for Vercel
+        if (!accountsLoaded) {
+            dataPath = '/tmp/accounts.json';
             accounts = {};
+            
+            // Try to create the file
+            try {
+                await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+            } catch (error) {
+                console.error('Failed to create accounts file:', error);
+                return res.status(500).json({ error: 'Failed to initialize data storage' });
+            }
         }
         
         const account = accounts[accountNumber];
@@ -83,7 +107,12 @@ export default async function handler(req, res) {
         account.documents.push(document);
         
         // Save accounts data
-        await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+        try {
+            await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+        } catch (writeError) {
+            console.error('Failed to save accounts file:', writeError);
+            return res.status(500).json({ error: 'Failed to save document data' });
+        }
 
         res.json({ 
             success: true, 
@@ -98,6 +127,15 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Error uploading document:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Error stack:', error.stack);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            path: error.path
+        });
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+        });
     }
 }

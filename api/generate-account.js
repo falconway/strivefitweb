@@ -42,16 +42,41 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Load accounts data
-        const dataPath = path.join(process.cwd(), 'backend/data/accounts.json');
+        // Try different paths for Vercel deployment
         let accounts = {};
+        let dataPath;
+        let accountsLoaded = false;
         
-        try {
-            const data = await fs.readFile(dataPath, 'utf8');
-            accounts = JSON.parse(data);
-        } catch (error) {
-            // File doesn't exist, start with empty object
+        const possiblePaths = [
+            path.join(process.cwd(), 'backend/data/accounts.json'),
+            path.join(process.cwd(), 'data/accounts.json'),
+            path.join('/tmp', 'accounts.json')
+        ];
+        
+        for (const tryPath of possiblePaths) {
+            try {
+                const data = await fs.readFile(tryPath, 'utf8');
+                accounts = JSON.parse(data);
+                dataPath = tryPath;
+                accountsLoaded = true;
+                break;
+            } catch (error) {
+                continue;
+            }
+        }
+        
+        // If no existing file found, try to create in /tmp for Vercel
+        if (!accountsLoaded) {
+            dataPath = '/tmp/accounts.json';
             accounts = {};
+            
+            // Try to create the file
+            try {
+                await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+            } catch (error) {
+                console.error('Failed to create accounts file:', error);
+                return res.status(500).json({ error: 'Failed to initialize data storage' });
+            }
         }
         
         // Generate unique account number
@@ -73,7 +98,12 @@ export default async function handler(req, res) {
         };
         
         // Save accounts
-        await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+        try {
+            await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+        } catch (writeError) {
+            console.error('Failed to save accounts file:', writeError);
+            return res.status(500).json({ error: 'Failed to save account data' });
+        }
         
         res.json({ 
             success: true, 
