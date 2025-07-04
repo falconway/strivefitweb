@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { put } from '@vercel/blob';
 
 function hashData(data) {
     return crypto.createHash('sha256').update(data).digest('hex');
@@ -21,11 +22,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { dob, accountNumber, fileName, fileSize, fileType, description } = req.body;
+        const { dob, accountNumber, fileName, fileSize, fileType, description, fileData } = req.body;
 
         if (!dob || !accountNumber || !fileName) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
+
+        // For now, we'll store document metadata without the actual file
+        // In the next update, we'll add proper file upload handling with multipart/form-data
 
         // Try different paths for Vercel deployment
         let accounts = {};
@@ -80,8 +84,9 @@ export default async function handler(req, res) {
         }
 
         // Create document record
+        const documentId = crypto.randomUUID();
         const document = {
-            id: crypto.randomUUID(),
+            id: documentId,
             originalName: fileName,
             filename: `${crypto.randomUUID()}.${fileName.split('.').pop()}`,
             mimetype: fileType || 'application/octet-stream',
@@ -89,6 +94,7 @@ export default async function handler(req, res) {
             description: description || '',
             uploadDate: new Date().toISOString(),
             processed: false,
+            blobUrl: null, // Will store Vercel Blob URL when we implement file storage
             processingStatus: {
                 ocr: { status: 'pending' },
                 structuring: { status: 'pending' },
@@ -103,14 +109,28 @@ export default async function handler(req, res) {
             }
         };
 
+        console.log('Creating document:', {
+            id: documentId,
+            fileName,
+            accountNumber: accountNumber.substring(0, 4) + '****'
+        });
+
         // Add document to account
         account.documents.push(document);
+        console.log(`Account now has ${account.documents.length} documents`);
         
         // Save accounts data
         try {
+            console.log('Saving to path:', dataPath);
             await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+            console.log('Successfully saved accounts data');
         } catch (writeError) {
             console.error('Failed to save accounts file:', writeError);
+            console.error('Write error details:', {
+                code: writeError.code,
+                path: writeError.path,
+                errno: writeError.errno
+            });
             return res.status(500).json({ error: 'Failed to save document data' });
         }
 
