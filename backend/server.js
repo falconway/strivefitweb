@@ -6,6 +6,7 @@ const path = require('path');
 const multer = require('multer');
 const archiver = require('archiver');
 const bodyParser = require('body-parser');
+const { PythonShell } = require('python-shell');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -627,7 +628,7 @@ app.post('/api/batch-download-documents', async (req, res) => {
                 archive.file(filePath, { name: document.originalName });
                 console.log('✅ Added to ZIP:', document.originalName);
             } catch (err) {
-                console.log('⚠��� File not found, skipping:', document.originalName);
+                console.log('⚠️ File not found, skipping:', document.originalName);
                 // Add an error file instead
                 archive.append(`File not found: ${document.originalName}`, { name: `ERROR_${document.originalName}.txt` });
             }
@@ -645,11 +646,13 @@ app.post('/api/batch-download-documents', async (req, res) => {
     }
 });
 
-// Process document
-app.post('/api/process-document/:documentId', async (req, res) => {
+// Process document with real Qwen OCR and translation
+app.post('/api/documents/:documentId/process', async (req, res) => {
     try {
         const { dob, accountNumber } = req.body;
         const { documentId } = req.params;
+
+        console.log('🔄 Starting real Qwen processing for document:', documentId);
 
         if (!dob || !accountNumber) {
             return res.status(400).json({ error: 'Date of birth and account number are required' });
@@ -672,32 +675,121 @@ app.post('/api/process-document/:documentId', async (req, res) => {
             return res.status(404).json({ error: 'Document not found' });
         }
 
-        // Simulate processing pipeline
-        document.processingStatus.ocr.status = 'processing';
+        // Start processing immediately (don't wait for response)
+        res.json({ success: true, message: 'Processing started with Qwen AI' });
+
+        // Set initial processing status
+        document.processingStatus = {
+            ocr: { status: 'processing', startTime: new Date().toISOString() },
+            structuring: { status: 'pending' },
+            translation: { status: 'pending' }
+        };
         await saveAccounts(accounts);
 
-        setTimeout(async () => {
-            document.processingStatus.ocr.status = 'completed';
-            document.processingStatus.structuring.status = 'processing';
-            await saveAccounts(accounts);
+        try {
+            // Execute Python bridge script
+            const filePath = path.join(UPLOADS_DIR, document.filename);
+            const pythonScriptPath = path.join(__dirname, 'services', 'qwen_bridge.py');
+            
+            console.log('🔄 Executing Python bridge:', pythonScriptPath);
+            console.log('📄 Processing file:', filePath);
 
-            setTimeout(async () => {
-                document.processingStatus.structuring.status = 'completed';
-                document.processingStatus.translation.status = 'processing';
-                await saveAccounts(accounts);
+            const options = {
+                mode: 'text',
+                pythonPath: 'python3',
+                pythonOptions: ['-u'], // unbuffered stdout
+                scriptPath: path.dirname(pythonScriptPath),
+                args: [filePath, documentId]
+            };
 
-                setTimeout(async () => {
-                    document.processingStatus.translation.status = 'completed';
-                    document.processed = true;
+            PythonShell.run('qwen_bridge.py', options, async (err, results) => {
+                try {
+                    if (err) {
+                        console.error('❌ Python processing error:', err);
+                        
+                        // Update processing status with error
+                        document.processingStatus.ocr.status = 'failed';
+                        document.processingStatus.ocr.error = err.message;
+                        document.processingStatus.ocr.endTime = new Date().toISOString();
+                        await saveAccounts(accounts);
+                        return;
+                    }
+
+                    if (results && results.length > 0) {
+                        // Parse the JSON result from Python script
+                        const result = JSON.parse(results[results.length - 1]);
+                        
+                        console.log('✅ Python processing completed:', result.success);
+
+                        if (result.success) {
+                            // Update processing status to completed
+                            document.processingStatus = {
+                                ocr: { 
+                                    status: 'completed', 
+                                    startTime: document.processingStatus.ocr.startTime,
+                                    endTime: new Date().toISOString(),
+                                    processingTime: result.processing_time?.ocr || 0
+                                },
+                                structuring: { 
+                                    status: 'completed',
+                                    processingTime: result.processing_time?.ocr || 0
+                                },
+                                translation: { 
+                                    status: 'completed',
+                                    processingTime: result.processing_time?.translation || 0
+                                }
+                            };
+
+                            // Update processed versions with actual file paths
+                            document.processedVersions = {
+                                ocrText: result.extracted_text,
+                                markdownOriginal: `${documentId}-ocr.md`,
+                                jsonOriginal: `${documentId}-ocr.json`,
+                                markdownEnglish: `${documentId}-translated.md`,
+                                jsonEnglish: `${documentId}-translated.json`
+                            };
+
+                            document.processed = true;
+                            
+                            console.log('📊 Processing stats:', {
+                                ocrTime: result.processing_time?.ocr,
+                                translationTime: result.processing_time?.translation,
+                                totalTime: result.processing_time?.total
+                            });
+
+                        } else {
+                            // Processing failed
+                            document.processingStatus.ocr.status = 'failed';
+                            document.processingStatus.ocr.error = result.error;
+                            document.processingStatus.ocr.endTime = new Date().toISOString();
+                            
+                            console.error('❌ Qwen processing failed:', result.error);
+                        }
+
+                        await saveAccounts(accounts);
+                    }
+
+                } catch (parseError) {
+                    console.error('❌ Error parsing Python result:', parseError);
+                    
+                    document.processingStatus.ocr.status = 'failed';
+                    document.processingStatus.ocr.error = 'Failed to parse processing result';
+                    document.processingStatus.ocr.endTime = new Date().toISOString();
                     await saveAccounts(accounts);
-                }, 2000);
-            }, 2000);
-        }, 2000);
+                }
+            });
 
-        res.json({ success: true, message: 'Processing started' });
+        } catch (error) {
+            console.error('❌ Error starting Python processing:', error);
+            
+            document.processingStatus.ocr.status = 'failed';
+            document.processingStatus.ocr.error = error.message;
+            document.processingStatus.ocr.endTime = new Date().toISOString();
+            await saveAccounts(accounts);
+        }
 
     } catch (error) {
-        console.error('Error processing document:', error);
+        console.error('❌ Error in document processing endpoint:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -816,75 +908,6 @@ app.post('/api/batch-process-documents', async (req, res) => {
 
     } catch (error) {
         console.error('Error batch processing documents:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/documents/:documentId/process', async (req, res) => {
-    try {
-        const { dob, accountNumber } = req.body;
-        const { documentId } = req.params;
-
-        if (!dob || !accountNumber) {
-            return res.status(400).json({ error: 'Date of birth and account number are required' });
-        }
-
-        const accounts = await loadAccounts();
-        const account = accounts[accountNumber];
-
-        if (!account) {
-            return res.status(401).json({ error: 'Invalid account' });
-        }
-
-        const combinedHash = hashData(dob + accountNumber);
-        if (combinedHash !== account.combinedHash) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        const document = account.documents.find(doc => doc.id === documentId);
-        if (!document) {
-            return res.status(404).json({ error: 'Document not found' });
-        }
-
-        // Simulate processing pipeline
-        document.processingStatus.ocr.status = 'processing';
-        await saveAccounts(accounts);
-
-        setTimeout(async () => {
-            document.processingStatus.ocr.status = 'completed';
-            document.processedVersions.ocrText = `${document.id}-ocr.txt`;
-            await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.ocrText), `Mock OCR text for ${document.originalName}`);
-            
-            document.processingStatus.structuring.status = 'processing';
-            await saveAccounts(accounts);
-
-            setTimeout(async () => {
-                document.processingStatus.structuring.status = 'completed';
-                document.processedVersions.markdownOriginal = `${document.id}-ocr.md`;
-                document.processedVersions.jsonOriginal = `${document.id}-ocr.json`;
-                await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.markdownOriginal), `# Mock Markdown for ${document.originalName}`);
-                await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.jsonOriginal), JSON.stringify({ "title": `Mock JSON for ${document.originalName}` }));
-
-                document.processingStatus.translation.status = 'processing';
-                await saveAccounts(accounts);
-
-                setTimeout(async () => {
-                    document.processingStatus.translation.status = 'completed';
-                    document.processedVersions.markdownEnglish = `${document.id}-translated.md`;
-                    document.processedVersions.jsonEnglish = `${document.id}-translated.json`;
-                    await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.markdownEnglish), `# Mock English Translation for ${document.originalName}`);
-                    await fs.writeFile(path.join(UPLOADS_DIR, document.processedVersions.jsonEnglish), JSON.stringify({ "title": `Mock English Translation for ${document.originalName}` }));
-                    
-                    document.processed = true;
-                    await saveAccounts(accounts);
-                }, 2000);
-            }, 2000);
-        }, 2000);
-
-        res.json({ success: true, message: 'Processing started' });
-
-    } catch (error) {
-        console.error('Error processing document:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

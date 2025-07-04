@@ -559,7 +559,7 @@
                 
                 try {
                     console.log('Generating account with DOB:', dob);
-                    const response = await fetch('http://localhost:3000/api/generate-account', {
+                    const response = await fetch('/api/generate-account', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -627,7 +627,7 @@
                 }
                 
                 try {
-                    const response = await fetch('http://localhost:3000/api/authenticate', {
+                    const response = await fetch('/api/authenticate', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -671,7 +671,7 @@
             // Test function for browser console
             window.testLogin = function(dob, accountNumber) {
                 console.log('Testing login with:', { dob, accountNumber });
-                fetch('http://localhost:3000/api/authenticate', {
+                fetch('/api/authenticate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ dob, accountNumber })

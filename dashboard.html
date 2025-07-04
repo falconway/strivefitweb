@@ -67,9 +67,34 @@
         }
         .header-left {
             display: flex;
-            align-items: center;
-            gap: 15px;
+            flex-direction: column;
+            gap: 10px;
             flex-grow: 1;
+        }
+        
+        .documents-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .documents-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .total-documents, .last-update {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .documents-stats span span:last-child {
+            font-weight: 600;
+            color: #495057;
         }
         .search-bar {
             position: relative;
@@ -422,7 +447,19 @@
                     <div class="document-list-panel">
                         <div class="document-panel-header">
                             <div class="header-left">
-                                <h3 data-i18n="documents-title">Your Documents</h3>
+                                <div class="documents-header-row">
+                                    <h3 data-i18n="documents-title">Your Documents</h3>
+                                    <div class="documents-stats">
+                                        <span class="total-documents" id="total-documents">
+                                            <span data-i18n="total-documents">Total:</span> 
+                                            <span id="document-count">0</span>
+                                        </span>
+                                        <span class="last-update" id="last-update">
+                                            <span data-i18n="last-update">Last update:</span> 
+                                            <span id="last-update-time" data-i18n="never">Never</span>
+                                        </span>
+                                    </div>
+                                </div>
                                 <div class="search-bar">
                                     <span class="search-icon">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -492,7 +529,7 @@
     <script src="js/language-switcher.js"></script>
     <script>
         // Global variables
-        const API_BASE = 'http://localhost:3000/api';
+        const API_BASE = '/api';
         let userCredentials = null;
         let allDocuments = [];
 
@@ -627,6 +664,52 @@
             updateSelection(); // Reset selection on load
         }
 
+        // Update document statistics in the header
+        function updateDocumentStats(documents) {
+            const documentCountEl = document.getElementById('document-count');
+            const lastUpdateTimeEl = document.getElementById('last-update-time');
+            
+            if (documentCountEl) {
+                documentCountEl.textContent = documents.length;
+            }
+            
+            if (lastUpdateTimeEl) {
+                if (documents.length > 0) {
+                    // Find the most recent upload date
+                    const mostRecent = documents.reduce((latest, doc) => {
+                        const docDate = new Date(doc.uploadDate);
+                        return docDate > latest ? docDate : latest;
+                    }, new Date(0));
+                    
+                    // Format the date and time according to current language
+                    const now = new Date();
+                    const diffMs = now - mostRecent;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+                    
+                    let timeText;
+                    if (diffMins < 1) {
+                        timeText = 'Just now';
+                    } else if (diffMins < 60) {
+                        timeText = `${diffMins} min ago`;
+                    } else if (diffHours < 24) {
+                        timeText = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+                    } else if (diffDays < 7) {
+                        timeText = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+                    } else {
+                        timeText = mostRecent.toLocaleDateString();
+                    }
+                    
+                    lastUpdateTimeEl.textContent = timeText;
+                    lastUpdateTimeEl.removeAttribute('data-i18n');
+                } else {
+                    lastUpdateTimeEl.setAttribute('data-i18n', 'never');
+                    lastUpdateTimeEl.textContent = 'Never';
+                }
+            }
+        }
+
         async function processDocument(docId) {
             try {
                 const response = await fetch(`${API_BASE}/documents/${docId}/process`, {
@@ -650,13 +733,6 @@
             }
         }
 
-        function updateDocumentStats(documents) {
-            const totalDocsDisplay = document.getElementById('total-docs-display');
-            const lastUpdateTime = document.getElementById('last-update-time');
-            
-            if(totalDocsDisplay) totalDocsDisplay.textContent = `${documents.length} documents`;
-            if(lastUpdateTime) lastUpdateTime.textContent = new Date().toLocaleTimeString();
-        }
 
         // Selection management
         function updateSelection() {
@@ -766,7 +842,11 @@
             if (!userCredentials || files.length === 0) return;
             
             const uploadProgressContainer = document.getElementById('upload-progress-container');
+            const uploadDialog = document.getElementById('upload-dialog');
             uploadProgressContainer.innerHTML = '';
+            
+            let completedUploads = 0;
+            const totalFiles = files.length;
 
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
@@ -783,15 +863,22 @@
                 `;
                 uploadProgressContainer.appendChild(progressItem);
 
-                const formData = new FormData();
-                formData.append('document', file);
-                formData.append('dob', userCredentials.dob);
-                formData.append('accountNumber', userCredentials.accountNumber);
+                const uploadData = {
+                    dob: userCredentials.dob,
+                    accountNumber: userCredentials.accountNumber,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type,
+                    description: '' // Could add UI for this later
+                };
                 
                 try {
                     const response = await fetch(`${API_BASE}/upload-document`, {
                         method: 'POST',
-                        body: formData,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(uploadData),
                     });
                     
                     const data = await response.json();
@@ -800,18 +887,38 @@
                     if (data.success) {
                         progressBarFill.style.width = '100%';
                         progressBarFill.style.backgroundColor = '#28a745';
+                        
+                        // Show checkmark for success
+                        setTimeout(() => {
+                            const progressInfo = document.querySelector(`#${fileId} .progress-item-info`);
+                            progressInfo.innerHTML = `✓ ${escapeHtml(file.name)} - Uploaded successfully`;
+                        }, 200);
                     } else {
                         throw new Error(data.error || 'Upload failed');
                     }
                 } catch (error) {
                     const progressBarFill = document.querySelector(`#${fileId} .progress-bar-fill`);
+                    const progressInfo = document.querySelector(`#${fileId} .progress-item-info`);
                     progressBarFill.style.width = '100%';
                     progressBarFill.style.backgroundColor = '#dc3545';
+                    progressInfo.innerHTML = `✗ ${escapeHtml(file.name)} - Upload failed`;
                     console.error(`Error uploading ${file.name}:`, error);
                 }
+                
+                completedUploads++;
+                
+                // If this is the last file, handle completion
+                if (completedUploads === totalFiles) {
+                    // Refresh the document list immediately
+                    await loadDocuments();
+                    
+                    // Hide upload dialog after a short delay
+                    setTimeout(() => {
+                        uploadDialog.classList.remove('show');
+                        uploadProgressContainer.innerHTML = '';
+                    }, 2000);
+                }
             }
-            
-            setTimeout(loadDocuments, 1000);
         }
 
         // Initialize dashboard
