@@ -863,13 +863,25 @@
                 `;
                 uploadProgressContainer.appendChild(progressItem);
 
+                // Convert file to base64
+                const fileDataBase64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1]; // Remove data:type;base64, prefix
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
                 const uploadData = {
                     dob: userCredentials.dob,
                     accountNumber: userCredentials.accountNumber,
                     fileName: file.name,
                     fileSize: file.size,
                     fileType: file.type,
-                    description: '' // Could add UI for this later
+                    description: '', // Could add UI for this later
+                    fileDataBase64: fileDataBase64
                 };
                 
                 try {
@@ -1106,18 +1118,35 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userCredentials)
                 });
+                
                 if (!response.ok) {
                     if (version !== 'original') {
                         // Fallback to original if translated/processed not found
                         viewDocument(docId, docName, mimetype, 'original');
                         return;
                     }
-                    throw new Error('Failed to download file for preview.');
+                    throw new Error('Failed to load document preview.');
                 }
 
-                const blob = await response.blob();
-                const effectiveMimetype = version === 'original' ? mimetype : 'text/markdown';
-                renderFile(viewer, blob, effectiveMimetype, docName);
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.redirectUrl) {
+                        // For original files, show the blob URL content
+                        if (data.contentType.startsWith('image/')) {
+                            viewer.innerHTML = `<img src="${data.redirectUrl}" alt="${data.documentName}" style="max-width: 100%; height: auto;">`;
+                        } else if (data.contentType === 'application/pdf') {
+                            viewer.innerHTML = `<iframe src="${data.redirectUrl}" style="width: 100%; height: 600px; border: none;"></iframe>`;
+                        } else {
+                            viewer.innerHTML = `<p>Document: <a href="${data.redirectUrl}" target="_blank">${data.documentName}</a></p>`;
+                        }
+                    } else if (data.content) {
+                        // For processed/translated content, render as markdown
+                        viewer.innerHTML = `<div style="padding: 20px; white-space: pre-wrap; font-family: monospace;">${escapeHtml(data.content)}</div>`;
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to load document');
+                }
 
             } catch (error) {
                 console.error('Error loading document preview:', error);

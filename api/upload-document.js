@@ -22,14 +22,19 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { dob, accountNumber, fileName, fileSize, fileType, description, fileData } = req.body;
+        const { dob, accountNumber, fileName, fileSize, fileType, description, fileDataBase64 } = req.body;
 
         if (!dob || !accountNumber || !fileName) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // For now, we'll store document metadata without the actual file
-        // In the next update, we'll add proper file upload handling with multipart/form-data
+        console.log('Upload request received:', {
+            fileName,
+            fileSize,
+            fileType,
+            hasFileData: !!fileDataBase64,
+            accountNumber: accountNumber.substring(0, 4) + '****'
+        });
 
         // Try different paths for Vercel deployment
         let accounts = {};
@@ -83,6 +88,36 @@ export default async function handler(req, res) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        console.log('Credentials verified successfully');
+
+        // Upload file to Vercel Blob if file data is provided
+        let blobUrl = null;
+        if (fileDataBase64) {
+            try {
+                console.log('Uploading file to Vercel Blob...');
+                
+                // Convert base64 to buffer
+                const buffer = Buffer.from(fileDataBase64, 'base64');
+                
+                // Generate a unique filename
+                const fileExtension = fileName.split('.').pop();
+                const uniqueFileName = `${accountNumber}/${crypto.randomUUID()}.${fileExtension}`;
+                
+                // Upload to Vercel Blob
+                const blob = await put(uniqueFileName, buffer, {
+                    access: 'public',
+                    contentType: fileType || 'application/octet-stream'
+                });
+                
+                blobUrl = blob.url;
+                console.log('File uploaded successfully to:', blobUrl);
+                
+            } catch (blobError) {
+                console.error('Error uploading to Vercel Blob:', blobError);
+                return res.status(500).json({ error: 'Failed to upload file to storage' });
+            }
+        }
+
         // Create document record
         const documentId = crypto.randomUUID();
         const document = {
@@ -94,7 +129,7 @@ export default async function handler(req, res) {
             description: description || '',
             uploadDate: new Date().toISOString(),
             processed: false,
-            blobUrl: null, // Will store Vercel Blob URL when we implement file storage
+            blobUrl: blobUrl, // Vercel Blob URL for the uploaded file
             processingStatus: {
                 ocr: { status: 'pending' },
                 structuring: { status: 'pending' },
@@ -141,7 +176,9 @@ export default async function handler(req, res) {
                 id: document.id,
                 originalName: document.originalName,
                 description: document.description,
-                uploadDate: document.uploadDate
+                uploadDate: document.uploadDate,
+                blobUrl: document.blobUrl,
+                hasFile: !!blobUrl
             }
         });
 
