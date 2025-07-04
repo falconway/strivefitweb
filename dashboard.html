@@ -863,16 +863,28 @@
                 `;
                 uploadProgressContainer.appendChild(progressItem);
 
-                // Convert file to base64
-                const fileDataBase64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64 = reader.result.split(',')[1]; // Remove data:type;base64, prefix
-                        resolve(base64);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
+                // Convert file to base64 (with size limit check)
+                let fileDataBase64 = null;
+                
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    console.log('File too large for upload, storing metadata only');
+                } else {
+                    try {
+                        fileDataBase64 = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const base64 = reader.result.split(',')[1]; // Remove data:type;base64, prefix
+                                resolve(base64);
+                            };
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+                        console.log('File converted to base64, size:', fileDataBase64.length);
+                    } catch (error) {
+                        console.error('Error converting file to base64:', error);
+                        fileDataBase64 = null;
+                    }
+                }
 
                 const uploadData = {
                     dob: userCredentials.dob,

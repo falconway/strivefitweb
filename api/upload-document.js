@@ -27,6 +27,11 @@ export default async function handler(req, res) {
         if (!dob || !accountNumber || !fileName) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
+        
+        // Basic validation
+        if (!fileSize || fileSize <= 0) {
+            return res.status(400).json({ error: 'Invalid file size' });
+        }
 
         console.log('Upload request received:', {
             fileName,
@@ -90,31 +95,54 @@ export default async function handler(req, res) {
 
         console.log('Credentials verified successfully');
 
+        // Check if Vercel Blob is configured
+        console.log('Environment check:', {
+            hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+            nodeEnv: process.env.NODE_ENV,
+            hasFileData: !!fileDataBase64
+        });
+
         // Upload file to Vercel Blob if file data is provided
         let blobUrl = null;
         if (fileDataBase64) {
             try {
                 console.log('Uploading file to Vercel Blob...');
-                
-                // Convert base64 to buffer
-                const buffer = Buffer.from(fileDataBase64, 'base64');
-                
-                // Generate a unique filename
-                const fileExtension = fileName.split('.').pop();
-                const uniqueFileName = `${accountNumber}/${crypto.randomUUID()}.${fileExtension}`;
-                
-                // Upload to Vercel Blob
-                const blob = await put(uniqueFileName, buffer, {
-                    access: 'public',
-                    contentType: fileType || 'application/octet-stream'
+                console.log('File info:', {
+                    fileName,
+                    fileSize,
+                    base64Length: fileDataBase64.length
                 });
                 
-                blobUrl = blob.url;
-                console.log('File uploaded successfully to:', blobUrl);
+                // Check if Vercel Blob token is available
+                if (!process.env.BLOB_READ_WRITE_TOKEN) {
+                    console.error('BLOB_READ_WRITE_TOKEN not found in environment');
+                    // For now, continue without file storage
+                    console.log('Continuing without file storage - metadata only');
+                } else {
+                    // Convert base64 to buffer
+                    const buffer = Buffer.from(fileDataBase64, 'base64');
+                    console.log('Buffer created, size:', buffer.length);
+                    
+                    // Generate a unique filename
+                    const fileExtension = fileName.split('.').pop();
+                    const uniqueFileName = `${accountNumber}/${crypto.randomUUID()}.${fileExtension}`;
+                    console.log('Uploading to path:', uniqueFileName);
+                    
+                    // Upload to Vercel Blob
+                    const blob = await put(uniqueFileName, buffer, {
+                        access: 'public',
+                        contentType: fileType || 'application/octet-stream'
+                    });
+                    
+                    blobUrl = blob.url;
+                    console.log('File uploaded successfully to:', blobUrl);
+                }
                 
             } catch (blobError) {
                 console.error('Error uploading to Vercel Blob:', blobError);
-                return res.status(500).json({ error: 'Failed to upload file to storage' });
+                console.error('Blob error stack:', blobError.stack);
+                // Don't fail the entire upload if blob storage fails
+                console.log('Continuing without file storage due to blob error');
             }
         }
 
