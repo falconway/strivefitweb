@@ -41,45 +41,48 @@ export default async function handler(req, res) {
             accountNumber: accountNumber.substring(0, 4) + '****'
         });
 
-        // Try different paths for Vercel deployment
+        // Load accounts data - try read-only sources first, then /tmp
         let accounts = {};
-        let dataPath;
-        
-        // Try to find accounts.json in different locations
-        const possiblePaths = [
-            path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json'),
-            path.join('/tmp', 'accounts.json')
-        ];
-        
+        let dataPath = '/tmp/accounts.json'; // Always write to /tmp
         let accountsLoaded = false;
         
-        for (const tryPath of possiblePaths) {
+        // Try to read from read-only deployment files first
+        const readOnlyPaths = [
+            path.join(process.cwd(), 'backend/data/accounts.json'),
+            path.join(process.cwd(), 'data/accounts.json')
+        ];
+        
+        for (const tryPath of readOnlyPaths) {
             try {
                 const data = await fs.readFile(tryPath, 'utf8');
                 accounts = JSON.parse(data);
-                dataPath = tryPath;
                 accountsLoaded = true;
+                console.log('Loaded accounts from read-only path:', tryPath);
                 break;
             } catch (error) {
-                // Continue to next path
                 continue;
             }
         }
         
-        // If no existing file found, try to create in /tmp for Vercel
+        // If not found in read-only, try /tmp (from previous function calls)
         if (!accountsLoaded) {
-            dataPath = '/tmp/accounts.json';
-            accounts = {};
-            
-            // Try to create the file
             try {
-                await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+                const data = await fs.readFile(dataPath, 'utf8');
+                accounts = JSON.parse(data);
+                accountsLoaded = true;
+                console.log('Loaded accounts from /tmp');
             } catch (error) {
-                console.error('Failed to create accounts file:', error);
-                return res.status(500).json({ error: 'Failed to initialize data storage' });
+                // File doesn't exist in /tmp, start fresh
+                accounts = {};
+                console.log('Starting with empty accounts data');
             }
         }
+        
+        console.log('Accounts loaded:', {
+            accountsLoaded,
+            accountCount: Object.keys(accounts).length,
+            writePath: dataPath
+        });
         
         const account = accounts[accountNumber];
         

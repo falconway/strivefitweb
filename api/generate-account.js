@@ -42,22 +42,20 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Try different paths for Vercel deployment
+        // Load accounts data - try read-only sources first, then /tmp
         let accounts = {};
-        let dataPath;
+        const dataPath = '/tmp/accounts.json'; // Always write to /tmp
         let accountsLoaded = false;
         
-        const possiblePaths = [
+        const readOnlyPaths = [
             path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json'),
-            path.join('/tmp', 'accounts.json')
+            path.join(process.cwd(), 'data/accounts.json')
         ];
         
-        for (const tryPath of possiblePaths) {
+        for (const tryPath of readOnlyPaths) {
             try {
                 const data = await fs.readFile(tryPath, 'utf8');
                 accounts = JSON.parse(data);
-                dataPath = tryPath;
                 accountsLoaded = true;
                 break;
             } catch (error) {
@@ -65,17 +63,14 @@ export default async function handler(req, res) {
             }
         }
         
-        // If no existing file found, try to create in /tmp for Vercel
+        // If not found in read-only, try /tmp
         if (!accountsLoaded) {
-            dataPath = '/tmp/accounts.json';
-            accounts = {};
-            
-            // Try to create the file
             try {
-                await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+                const data = await fs.readFile(dataPath, 'utf8');
+                accounts = JSON.parse(data);
+                accountsLoaded = true;
             } catch (error) {
-                console.error('Failed to create accounts file:', error);
-                return res.status(500).json({ error: 'Failed to initialize data storage' });
+                accounts = {};
             }
         }
         
