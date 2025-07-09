@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
+import { loadAccounts } from './data-store.js';
 
 function hashData(data) {
     return crypto.createHash('sha256').update(data).digest('hex');
@@ -30,42 +29,26 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Load accounts data - try read-only sources first, then /tmp
-        let accounts = {};
-        let accountsLoaded = false;
+        // Load accounts data using persistent storage
+        const accounts = await loadAccounts();
         
-        const readOnlyPaths = [
-            path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json')
-        ];
+        console.log('📊 get-documents - loaded data:', {
+            totalAccounts: Object.keys(accounts).length,
+            requestedAccount: accountNumber.substring(0, 4) + '****'
+        });
         
-        for (const tryPath of readOnlyPaths) {
-            try {
-                const data = await fs.readFile(tryPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-                break;
-            } catch (error) {
-                continue;
-            }
-        }
-        
-        // If not found in read-only, try /tmp
-        if (!accountsLoaded) {
-            try {
-                const data = await fs.readFile('/tmp/accounts.json', 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-            } catch (error) {
-                accounts = {};
-            }
-        }
-        
-        if (!accountsLoaded && Object.keys(accounts).length === 0) {
+        if (Object.keys(accounts).length === 0) {
+            console.log('❌ No account data available');
             return res.status(500).json({ error: 'No account data available' });
         }
         
         const account = accounts[accountNumber];
+        
+        if (account) {
+            console.log('✅ Found account with', account.documents ? account.documents.length : 0, 'documents');
+        } else {
+            console.log('❌ Account not found');
+        }
         
         if (!account) {
             return res.status(401).json({ error: 'Invalid account' });

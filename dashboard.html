@@ -424,7 +424,10 @@
 
                 <!-- Top - Upload Section -->
                 <div class="dashboard-top">
-                    <button type="button" class="upload-btn-main" id="upload-btn-main" data-i18n="upload-documents">Upload Documents</button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button type="button" class="upload-btn-main" id="upload-btn-main" data-i18n="upload-documents">Upload Documents</button>
+                        <button type="button" class="cleanup-btn" id="cleanup-btn" title="Clean up storage inconsistencies" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🧹 Cleanup</button>
+                    </div>
                 </div>
 
                 <!-- Upload Dialog -->
@@ -595,8 +598,15 @@
                 
                 const data = await response.json();
                 
+                console.log('📄 get-documents response:', {
+                    success: data.success,
+                    documentCount: data.documents ? data.documents.length : 0,
+                    documents: data.documents
+                });
+                
                 if (data.success) {
                     allDocuments = data.documents;
+                    console.log('📋 Setting allDocuments to:', allDocuments.length, 'documents');
                     displayDocuments(allDocuments);
                 } else {
                     throw new Error(data.error || 'Failed to load documents');
@@ -815,12 +825,15 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/delete-document/${documentId}`, {
+                const response = await fetch(`${API_BASE}/delete-document`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json; charset=utf-8',
                     },
-                    body: JSON.stringify(userCredentials)
+                    body: JSON.stringify({
+                        ...userCredentials,
+                        documentId: documentId
+                    })
                 });
                 
                 const data = await response.json();
@@ -863,17 +876,37 @@
                 `;
                 uploadProgressContainer.appendChild(progressItem);
 
-                // Convert file to base64 (with size limit check)
+                // Check file size and handle appropriately
+                let blobUrl = null;
+                let uploadMethod = 'metadata-only';
+                
+                // Vercel function payload limit is ~4.5MB, base64 adds ~33% overhead
+                // So max file size for API upload is ~3MB
+                const maxApiFileSize = 3 * 1024 * 1024; // 3MB
+                
+                if (file.size > maxApiFileSize) {
+                    console.log(`File size ${file.size} bytes exceeds API limit, will upload directly to blob`);
+                    
+                    // TODO: Implement direct blob upload for large files
+                    // For now, just store metadata
+                    uploadMethod = 'large-file-placeholder';
+                    
+                } else {
+                    console.log(`File size ${file.size} bytes is within API limit, uploading via API`);
+                    uploadMethod = 'api-upload';
+                }
+
+                // Prepare upload data based on file size
+                let uploadData;
                 let fileDataBase64 = null;
                 
-                if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                    console.log('File too large for upload, storing metadata only');
-                } else {
+                if (uploadMethod === 'api-upload') {
+                    // Convert small files to base64 for API upload
                     try {
                         fileDataBase64 = await new Promise((resolve, reject) => {
                             const reader = new FileReader();
                             reader.onload = () => {
-                                const base64 = reader.result.split(',')[1]; // Remove data:type;base64, prefix
+                                const base64 = reader.result.split(',')[1];
                                 resolve(base64);
                             };
                             reader.onerror = reject;
@@ -885,15 +918,16 @@
                         fileDataBase64 = null;
                     }
                 }
-
-                const uploadData = {
+                
+                uploadData = {
                     dob: userCredentials.dob,
                     accountNumber: userCredentials.accountNumber,
                     fileName: file.name,
                     fileSize: file.size,
                     fileType: file.type,
-                    description: '', // Could add UI for this later
-                    fileDataBase64: fileDataBase64
+                    description: '',
+                    fileDataBase64: fileDataBase64,
+                    uploadMethod: uploadMethod
                 };
                 
                 try {
@@ -905,7 +939,20 @@
                         body: JSON.stringify(uploadData),
                     });
                     
+                    console.log('Upload response status:', response.status);
+                    console.log('Upload response headers:', [...response.headers.entries()]);
+                    
+                    // Check if response is actually JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const textResponse = await response.text();
+                        console.error('Non-JSON response received:', textResponse);
+                        throw new Error(`Server returned ${contentType}: ${textResponse.substring(0, 200)}`);
+                    }
+                    
                     const data = await response.json();
+                    console.log('Upload response data:', data);
+                    
                     const progressBarFill = document.querySelector(`#${fileId} .progress-bar-fill`);
 
                     if (data.success) {
@@ -933,8 +980,15 @@
                 
                 // If this is the last file, handle completion
                 if (completedUploads === totalFiles) {
+                    console.log('🔄 All uploads completed, refreshing document list...');
+                    
                     // Refresh the document list immediately
-                    await loadDocuments();
+                    try {
+                        await loadDocuments();
+                        console.log('✅ Document list refreshed successfully');
+                    } catch (error) {
+                        console.error('❌ Failed to refresh document list:', error);
+                    }
                     
                     // Hide upload dialog after a short delay
                     setTimeout(() => {
@@ -971,6 +1025,7 @@
             const batchDeleteBtn = document.getElementById('batch-delete-btn');
             const batchProcessBtn = document.getElementById('batch-process-btn');
             const searchInput = document.getElementById('search-input');
+            const cleanupBtn = document.getElementById('cleanup-btn');
 
             uploadBtnMain.addEventListener('click', () => uploadDialog.classList.add('show'));
             closeUploadDialog.addEventListener('click', () => uploadDialog.classList.remove('show'));
@@ -1071,6 +1126,72 @@
                 const searchTerm = e.target.value.toLowerCase();
                 const filteredDocs = allDocuments.filter(doc => doc.originalName.toLowerCase().includes(searchTerm));
                 displayDocuments(filteredDocs);
+            });
+
+            // Storage cleanup functionality
+            cleanupBtn.addEventListener('click', async () => {
+                try {
+                    cleanupBtn.disabled = true;
+                    cleanupBtn.textContent = '🔄 Analyzing...';
+                    
+                    // First, analyze storage
+                    const analysisResponse = await fetch(`${API_BASE}/cleanup-storage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userCredentials)
+                    });
+                    
+                    const analysisData = await analysisResponse.json();
+                    
+                    if (analysisData.success) {
+                        const analysis = analysisData.analysis;
+                        let message = `Storage Analysis:\n\n`;
+                        message += `• Total documents: ${analysis.totalDocuments}\n`;
+                        message += `• Documents with files: ${analysis.documentsWithBlobs}\n`;
+                        message += `• Total blob files: ${analysis.totalBlobs}\n`;
+                        message += `• Orphaned files: ${analysis.orphanedBlobs}\n`;
+                        message += `• Broken metadata: ${analysis.brokenMetadata}\n\n`;
+                        
+                        if (analysis.orphanedBlobs > 0 || analysis.brokenMetadata > 0) {
+                            message += `Issues found! Click OK to run cleanup.`;
+                            
+                            if (confirm(message)) {
+                                cleanupBtn.textContent = '🧹 Cleaning...';
+                                
+                                const cleanupResponse = await fetch(`${API_BASE}/cleanup-storage`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        ...userCredentials,
+                                        action: 'cleanup'
+                                    })
+                                });
+                                
+                                const cleanupData = await cleanupResponse.json();
+                                
+                                if (cleanupData.success) {
+                                    const results = cleanupData.cleanupResults;
+                                    alert(`Cleanup completed!\n\n• Orphaned files deleted: ${results.orphanedBlobsDeleted}\n• Broken metadata fixed: ${results.brokenMetadataFixed}\n• Errors: ${results.errors.length}`);
+                                    
+                                    // Refresh document list
+                                    await loadDocuments();
+                                } else {
+                                    throw new Error(cleanupData.error || 'Cleanup failed');
+                                }
+                            }
+                        } else {
+                            alert(message + 'Storage is clean and consistent!');
+                        }
+                    } else {
+                        throw new Error(analysisData.error || 'Analysis failed');
+                    }
+                } catch (error) {
+                    console.error('Error during cleanup:', error);
+                    alert('Error during cleanup: ' + error.message);
+                } finally {
+                    cleanupBtn.disabled = false;
+                    cleanupBtn.textContent = '🧹 Cleanup';
+                }
             });
 
             const tableBody = document.getElementById('documents-table-body');

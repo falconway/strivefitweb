@@ -1,13 +1,15 @@
 import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
 import { put } from '@vercel/blob';
+import { loadAccounts, saveAccounts } from './data-store.js';
 
 function hashData(data) {
     return crypto.createHash('sha256').update(data).digest('hex');
 }
 
 export default async function handler(req, res) {
+    // DEPLOYMENT CHECK: This should appear in logs if using the correct version
+    console.log('🚀 USING FIXED VERSION - FILESYSTEM ISSUE RESOLVED v2.0');
+    
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -22,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { dob, accountNumber, fileName, fileSize, fileType, description, fileDataBase64 } = req.body;
+        const { dob, accountNumber, fileName, fileSize, fileType, description, fileDataBase64, uploadMethod } = req.body;
 
         if (!dob || !accountNumber || !fileName) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -37,52 +39,13 @@ export default async function handler(req, res) {
             fileName,
             fileSize,
             fileType,
+            uploadMethod,
             hasFileData: !!fileDataBase64,
             accountNumber: accountNumber.substring(0, 4) + '****'
         });
 
-        // Load accounts data - try read-only sources first, then /tmp
-        let accounts = {};
-        let dataPath = '/tmp/accounts.json'; // Always write to /tmp
-        let accountsLoaded = false;
-        
-        // Try to read from read-only deployment files first
-        const readOnlyPaths = [
-            path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json')
-        ];
-        
-        for (const tryPath of readOnlyPaths) {
-            try {
-                const data = await fs.readFile(tryPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-                console.log('Loaded accounts from read-only path:', tryPath);
-                break;
-            } catch (error) {
-                continue;
-            }
-        }
-        
-        // If not found in read-only, try /tmp (from previous function calls)
-        if (!accountsLoaded) {
-            try {
-                const data = await fs.readFile(dataPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-                console.log('Loaded accounts from /tmp');
-            } catch (error) {
-                // File doesn't exist in /tmp, start fresh
-                accounts = {};
-                console.log('Starting with empty accounts data');
-            }
-        }
-        
-        console.log('Accounts loaded:', {
-            accountsLoaded,
-            accountCount: Object.keys(accounts).length,
-            writePath: dataPath
-        });
+        // Load accounts data using persistent storage
+        const accounts = await loadAccounts();
         
         const account = accounts[accountNumber];
         
@@ -105,9 +68,14 @@ export default async function handler(req, res) {
             hasFileData: !!fileDataBase64
         });
 
-        // Upload file to Vercel Blob if file data is provided
+        // Upload file to Vercel Blob based on upload method
         let blobUrl = null;
-        if (fileDataBase64) {
+        
+        if (uploadMethod === 'large-file-placeholder') {
+            console.log('Large file detected - storing metadata only, no blob upload');
+            // For large files, we'll implement direct frontend blob upload later
+            // For now, just store metadata
+        } else if (fileDataBase64) {
             try {
                 console.log('Uploading file to Vercel Blob...');
                 console.log('File info:', {
@@ -185,22 +153,16 @@ export default async function handler(req, res) {
         account.documents.push(document);
         console.log(`Account now has ${account.documents.length} documents`);
         
-        // Save accounts data
+        // Save accounts data using persistent storage
         try {
-            console.log('Saving to path:', dataPath);
-            await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+            await saveAccounts(accounts);
             console.log('Successfully saved accounts data');
         } catch (writeError) {
             console.error('Failed to save accounts file:', writeError);
-            console.error('Write error details:', {
-                code: writeError.code,
-                path: writeError.path,
-                errno: writeError.errno
-            });
             return res.status(500).json({ error: 'Failed to save document data' });
         }
 
-        res.json({ 
+        const responseData = { 
             success: true, 
             message: 'Document uploaded successfully',
             document: {
@@ -211,19 +173,31 @@ export default async function handler(req, res) {
                 blobUrl: document.blobUrl,
                 hasFile: !!blobUrl
             }
-        });
+        };
+        
+        console.log('✅ Sending success response:', JSON.stringify(responseData));
+        
+        res.setHeader('Content-Type', 'application/json');
+        res.json(responseData);
 
     } catch (error) {
-        console.error('Error uploading document:', error);
+        console.error('❌ Error uploading document:', error);
         console.error('Error stack:', error.stack);
         console.error('Error details:', {
             message: error.message,
             code: error.code,
             path: error.path
         });
-        res.status(500).json({ 
+        
+        const errorResponse = { 
+            success: false,
             error: 'Internal server error', 
             details: process.env.NODE_ENV === 'development' ? error.message : undefined 
-        });
+        };
+        
+        console.log('❌ Sending error response:', JSON.stringify(errorResponse));
+        
+        res.setHeader('Content-Type', 'application/json');
+        res.status(500).json(errorResponse);
     }
 }

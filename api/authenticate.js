@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
+import { loadAccounts } from './data-store.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -25,38 +24,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Load accounts data - try read-only sources first, then /tmp
-    let accounts = {};
-    let accountsLoaded = false;
+    // Load accounts data using persistent storage
+    const accounts = await loadAccounts();
     
-    const readOnlyPaths = [
-      path.join(process.cwd(), 'backend/data/accounts.json'),
-      path.join(process.cwd(), 'data/accounts.json')
-    ];
-    
-    for (const tryPath of readOnlyPaths) {
-      try {
-        const data = await fs.readFile(tryPath, 'utf8');
-        accounts = JSON.parse(data);
-        accountsLoaded = true;
-        break;
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    // If not found in read-only, try /tmp
-    if (!accountsLoaded) {
-      try {
-        const data = await fs.readFile('/tmp/accounts.json', 'utf8');
-        accounts = JSON.parse(data);
-        accountsLoaded = true;
-      } catch (error) {
-        accounts = {};
-      }
-    }
-    
-    if (!accountsLoaded && Object.keys(accounts).length === 0) {
+    if (Object.keys(accounts).length === 0) {
       return res.status(401).json({ error: 'Authentication system unavailable' });
     }
     

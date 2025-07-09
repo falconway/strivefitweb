@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
+import { loadAccounts, saveAccounts } from './data-store.js';
 
 function hashData(data) {
     return crypto.createHash('sha256').update(data).digest('hex');
@@ -42,37 +41,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Load accounts data - try read-only sources first, then /tmp
-        let accounts = {};
-        const dataPath = '/tmp/accounts.json'; // Always write to /tmp
-        let accountsLoaded = false;
-        
-        const readOnlyPaths = [
-            path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json')
-        ];
-        
-        for (const tryPath of readOnlyPaths) {
-            try {
-                const data = await fs.readFile(tryPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-                break;
-            } catch (error) {
-                continue;
-            }
-        }
-        
-        // If not found in read-only, try /tmp
-        if (!accountsLoaded) {
-            try {
-                const data = await fs.readFile(dataPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-            } catch (error) {
-                accounts = {};
-            }
-        }
+        // Load accounts data using persistent storage
+        const accounts = await loadAccounts();
         
         // Generate unique account number
         let accountNumber;
@@ -92,9 +62,9 @@ export default async function handler(req, res) {
             documents: []
         };
         
-        // Save accounts
+        // Save accounts using persistent storage
         try {
-            await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+            await saveAccounts(accounts);
         } catch (writeError) {
             console.error('Failed to save accounts file:', writeError);
             return res.status(500).json({ error: 'Failed to save account data' });
