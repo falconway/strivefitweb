@@ -756,8 +756,8 @@
         async function processDocument(docId) {
             try {
                 // Find document name for display
-                const document = allDocuments.find(doc => doc.id === docId);
-                const documentName = document ? document.originalName : 'Document';
+                const doc = allDocuments.find(doc => doc.id === docId);
+                const documentName = doc ? doc.originalName : 'Document';
                 
                 // Show processing dialog
                 const processingDialog = document.getElementById('processing-dialog');
