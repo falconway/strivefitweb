@@ -1,7 +1,6 @@
-import { spawn } from 'child_process';
-import path from 'path';
-import fs from 'fs/promises';
 import crypto from 'crypto';
+import { loadAccounts, saveAccounts } from './data-store.js';
+import QwenSimulator from './services/qwen-simulator.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,10 +24,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Authenticate user first
-    const dataPath = path.join(process.cwd(), 'backend/data/accounts.json');
-    const data = await fs.readFile(dataPath, 'utf8');
-    const accounts = JSON.parse(data);
+    console.log('🔄 Processing document with Qwen AI:', documentId);
+    
+    // Load accounts data using persistent storage
+    const accounts = await loadAccounts();
     
     const account = accounts[accountNumber];
     if (!account) {
@@ -45,99 +44,134 @@ export default async function handler(req, res) {
     if (!document) {
       return res.status(404).json({ error: 'Document not found' });
     }
+    
+    if (!document.blobUrl) {
+      return res.status(400).json({ error: 'Document file not available for processing' });
+    }
 
-    // Update processing status
+    // Update processing status to indicate start
     document.processingStatus = {
       ocr: { status: 'processing', startTime: new Date().toISOString() },
       structuring: { status: 'pending' },
       translation: { status: 'pending' }
     };
-    await fs.writeFile(dataPath, JSON.stringify(accounts, null, 2));
+    
+    // Save initial status update
+    await saveAccounts(accounts);
 
-    // Execute Python OCR script (simplified for Vercel)
-    const pythonScript = path.join(process.cwd(), 'backend/services/qwen_bridge.py');
-    const uploadPath = path.join(process.cwd(), 'backend/uploads', document.filename);
-    
-    const pythonProcess = spawn('python3', [pythonScript, uploadPath, documentId]);
-    
-    let result = '';
-    let error = '';
-    
-    pythonProcess.stdout.on('data', (data) => {
-      result += data.toString();
-    });
-    
-    pythonProcess.stderr.on('data', (data) => {
-      error += data.toString();
-    });
-    
-    pythonProcess.on('close', async (code) => {
-      try {
-        // Reload accounts data
-        const updatedData = await fs.readFile(dataPath, 'utf8');
-        const updatedAccounts = JSON.parse(updatedData);
-        const updatedAccount = updatedAccounts[accountNumber];
-        const updatedDocument = updatedAccount.documents.find(doc => doc.id === documentId);
-
-        if (code === 0) {
-          // Parse the result
-          const processResult = JSON.parse(result);
-          
-          if (processResult.success) {
-            // Update document status
-            updatedDocument.processed = true;
-            updatedDocument.processingStatus = {
-              ocr: { 
-                status: 'completed',
-                processingTime: processResult.processing_time?.ocr || 0
-              },
-              structuring: { 
-                status: 'completed',
-                processingTime: processResult.processing_time?.ocr || 0
-              },
-              translation: { 
-                status: 'completed',
-                processingTime: processResult.processing_time?.translation || 0
-              }
-            };
-            
-            updatedDocument.processedVersions = {
-              ocrText: processResult.extracted_text,
-              markdownOriginal: `${documentId}-ocr.md`,
-              jsonOriginal: `${documentId}-ocr.json`,
-              markdownEnglish: `${documentId}-translated.md`,
-              jsonEnglish: `${documentId}-translated.json`
-            };
-          } else {
-            updatedDocument.processingStatus.ocr.status = 'failed';
-            updatedDocument.processingStatus.ocr.error = processResult.error;
-          }
-        } else {
-          updatedDocument.processingStatus.ocr.status = 'failed';
-          updatedDocument.processingStatus.ocr.error = error || 'Processing failed';
-        }
-
-        // Save updated accounts data
-        await fs.writeFile(dataPath, JSON.stringify(updatedAccounts, null, 2));
-        
-      } catch (updateError) {
-        console.error('Error updating document status:', updateError);
-      }
-    });
-    
-    // Set timeout for long-running processes
-    setTimeout(() => {
-      pythonProcess.kill();
-    }, 55000); // 55 seconds (under Vercel's 60s limit)
-    
-    // Return immediately
+    // Process document with Qwen AI Simulator
+    // Return immediately to avoid timeout, process asynchronously
     res.json({ 
       success: true, 
       message: 'Processing started with Qwen AI'
     });
     
+    // Start background processing (don't await to return response immediately)
+    processDocumentAsync(document, accounts, accountNumber).catch(error => {
+      console.error('❌ Background processing error:', error);
+    });
+    
   } catch (error) {
     console.error('Processing error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+/**
+ * Process document asynchronously with Qwen AI Simulator
+ */
+async function processDocumentAsync(document, accounts, accountNumber) {
+  const qwenSimulator = new QwenSimulator();
+  
+  try {
+    console.log('🚀 Starting background Qwen processing for:', document.originalName);
+    
+    // Process document with Qwen simulator
+    const processResult = await qwenSimulator.processDocument(document, document.blobUrl);
+    
+    // Reload accounts data (it might have been updated)
+    const updatedAccounts = await loadAccounts();
+    const updatedAccount = updatedAccounts[accountNumber];
+    const updatedDocument = updatedAccount.documents.find(doc => doc.id === document.id);
+    
+    if (!updatedDocument) {
+      console.error('❌ Document not found after processing:', document.id);
+      return;
+    }
+    
+    if (processResult.success) {
+      console.log('✅ Qwen processing completed successfully');
+      
+      // Update document with results
+      updatedDocument.processed = true;
+      updatedDocument.processingStatus = {
+        ocr: { 
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          processingTime: processResult.processing_time.ocr
+        },
+        structuring: { 
+          status: 'completed', 
+          completedAt: new Date().toISOString(),
+          processingTime: processResult.processing_time.structuring
+        },
+        translation: { 
+          status: 'completed',
+          completedAt: new Date().toISOString(), 
+          processingTime: processResult.processing_time.translation
+        }
+      };
+      
+      // Generate and store processed files
+      const markdownFiles = await qwenSimulator.generateMarkdownFiles(
+        document, 
+        { text: processResult.extracted_text, confidence: 0.95 },
+        processResult.translated_data
+      );
+      
+      updatedDocument.processedVersions = {
+        ocrText: processResult.extracted_text,
+        markdownOriginal: markdownFiles.ocrMarkdown || `${document.id}-ocr.md`,
+        jsonOriginal: `${document.id}-ocr.json`,
+        markdownEnglish: markdownFiles.translatedMarkdown || `${document.id}-translated.md`, 
+        jsonEnglish: `${document.id}-translated.json`,
+        structuredData: processResult.structured_data,
+        translatedData: processResult.translated_data
+      };
+      
+    } else {
+      console.error('❌ Qwen processing failed:', processResult.error);
+      
+      updatedDocument.processingStatus = {
+        ocr: { status: 'failed', error: processResult.error },
+        structuring: { status: 'failed', error: processResult.error },
+        translation: { status: 'failed', error: processResult.error }
+      };
+    }
+    
+    // Save updated accounts data
+    await saveAccounts(updatedAccounts);
+    console.log('💾 Document processing results saved');
+    
+  } catch (error) {
+    console.error('❌ Background processing error:', error);
+    
+    try {
+      // Mark processing as failed
+      const failedAccounts = await loadAccounts();
+      const failedAccount = failedAccounts[accountNumber];
+      const failedDocument = failedAccount.documents.find(doc => doc.id === document.id);
+      
+      if (failedDocument) {
+        failedDocument.processingStatus = {
+          ocr: { status: 'failed', error: error.message },
+          structuring: { status: 'failed', error: error.message },
+          translation: { status: 'failed', error: error.message }
+        };
+        await saveAccounts(failedAccounts);
+      }
+    } catch (saveError) {
+      console.error('❌ Error saving failed status:', saveError);
+    }
   }
 }

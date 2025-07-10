@@ -1,0 +1,34 @@
+# Qwen OCR & Translation System Dependencies
+# Production-ready OCR and translation with web interface
+
+# 🌐 Web Interface
+streamlit>=1.46.0          # Modern web GUI framework
+
+# 🤖 AI/ML Core
+dashscope>=1.23.6          # Official Alibaba Cloud DashScope SDK for Qwen models
+Pillow>=11.0.0             # Image processing and manipulation
+numpy>=1.20.0              # Numerical computing support
+
+# 📸 Image Processing
+opencv-python>=4.5.0       # Advanced image preprocessing and optimization
+
+# 📄 PDF Support  
+PyPDF2>=3.0.0             # PDF text extraction
+pdf2image>=1.17.0         # PDF to image conversion
+
+# ⚙️ Configuration & Utilities
+python-dotenv>=1.0.0      # Environment variable management
+requests>=2.25.0          # HTTP requests and API calls
+
+# 📊 Data Processing
+pandas>=1.4.0             # Data manipulation (required by Streamlit)
+
+# 🎨 UI Dependencies (automatically installed with Streamlit)
+# altair>=4.0             # Visualization library
+# protobuf>=3.20          # Data serialization
+
+# 🔧 Optional Dependencies
+# Uncomment if needed for specific use cases:
+# pytesseract>=0.3.10      # Fallback OCR engine
+# opencv-contrib-python    # Additional OpenCV modules
+# watchdog>=2.0.0         # File monitoring for development

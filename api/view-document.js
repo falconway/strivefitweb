@@ -87,15 +87,107 @@ export default async function handler(req, res) {
             }
         }
         
-        // For processed/translated versions, return mock content for now
+        // For processed/translated versions, return actual processed content
         if (version === 'processed' || version === 'translated') {
-            const mockContent = `# ${document.originalName}\n\n**${version === 'processed' ? 'OCR Result' : 'Translation Result'}**\n\nThis is a mock ${version} version of the document.\n\nIn the full implementation, this would contain:\n- OCR extracted text (for processed)\n- English translation (for translated)\n- Structured medical data\n\nDocument details:\n- Original name: ${document.originalName}\n- Upload date: ${new Date(document.uploadDate).toLocaleString()}\n- File size: ${document.size} bytes`;
+            console.log('Requested version:', version, 'Document processed:', !!document.processed);
+            console.log('Processing status:', document.processingStatus);
+            console.log('Processed versions:', document.processedVersions);
             
+            // Check if document has been processed
+            if (!document.processed || !document.processedVersions) {
+                return res.json({
+                    success: true,
+                    content: `# ${document.originalName} - ${version === 'processed' ? 'OCR Processing' : 'Translation'}\n\n**Status**: Not yet processed\n\nThis document has not been processed with Qwen AI yet. \n\n**To process this document:**\n1. Click the "Process" button in the document list\n2. Wait for OCR and translation to complete\n3. Refresh this view to see results\n\n**Current Processing Status:**\n- OCR: ${document.processingStatus?.ocr?.status || 'pending'}\n- Structuring: ${document.processingStatus?.structuring?.status || 'pending'}\n- Translation: ${document.processingStatus?.translation?.status || 'pending'}`,
+                    contentType: 'text/markdown',
+                    documentName: `${document.originalName} (${version} - pending)`
+                });
+            }
+            
+            // Check processing status
+            const isProcessingComplete = 
+                document.processingStatus?.ocr?.status === 'completed' &&
+                document.processingStatus?.structuring?.status === 'completed' &&
+                document.processingStatus?.translation?.status === 'completed';
+                
+            if (!isProcessingComplete) {
+                const ocrStatus = document.processingStatus?.ocr?.status || 'pending';
+                const structuringStatus = document.processingStatus?.structuring?.status || 'pending';
+                const translationStatus = document.processingStatus?.translation?.status || 'pending';
+                
+                return res.json({
+                    success: true,
+                    content: `# ${document.originalName} - Processing in Progress\n\n**Current Status**: Processing with Qwen AI\n\n**Processing Steps:**\n\n✅ **OCR**: ${ocrStatus}\n${structuringStatus === 'completed' ? '✅' : structuringStatus === 'processing' ? '🔄' : '⏳'} **Structuring**: ${structuringStatus}\n${translationStatus === 'completed' ? '✅' : translationStatus === 'processing' ? '🔄' : '⏳'} **Translation**: ${translationStatus}\n\n${version === 'processed' ? 'OCR and structuring' : 'Translation'} results will appear here when processing is complete.\n\n*Refresh this page to see updated status*`,
+                    contentType: 'text/markdown',
+                    documentName: `${document.originalName} (${version} - processing)`
+                });
+            }
+            
+            // Return processed content
+            try {
+                if (version === 'processed') {
+                    // Try to fetch from blob URL first
+                    if (document.processedVersions.markdownOriginal && document.processedVersions.markdownOriginal.startsWith('http')) {
+                        const response = await fetch(document.processedVersions.markdownOriginal);
+                        if (response.ok) {
+                            const content = await response.text();
+                            return res.json({
+                                success: true,
+                                content: content,
+                                contentType: 'text/markdown',
+                                documentName: `${document.originalName} (OCR Results)`
+                            });
+                        }
+                    }
+                    
+                    // Fallback to stored OCR text
+                    const ocrContent = document.processedVersions.ocrText || 'OCR text not available';
+                    return res.json({
+                        success: true,
+                        content: `# OCR Results - ${document.originalName}\n\n**Processing Date:** ${new Date(document.processingStatus.ocr.completedAt).toLocaleString()}\n**Processing Time:** ${document.processingStatus.ocr.processingTime}ms\n\n## Extracted Text\n\n${ocrContent}`,
+                        contentType: 'text/markdown',
+                        documentName: `${document.originalName} (OCR Results)`
+                    });
+                }
+                
+                if (version === 'translated') {
+                    // Try to fetch from blob URL first
+                    if (document.processedVersions.markdownEnglish && document.processedVersions.markdownEnglish.startsWith('http')) {
+                        const response = await fetch(document.processedVersions.markdownEnglish);
+                        if (response.ok) {
+                            const content = await response.text();
+                            return res.json({
+                                success: true,
+                                content: content,
+                                contentType: 'text/markdown',
+                                documentName: `${document.originalName} (English Translation)`
+                            });
+                        }
+                    }
+                    
+                    // Fallback to structured translation data
+                    const translationData = document.processedVersions.translatedData;
+                    if (translationData) {
+                        const translatedContent = `# Medical Report Translation - ${document.originalName}\n\n**Translation Date:** ${new Date(document.processingStatus.translation.completedAt).toLocaleString()}\n**Processing Time:** ${document.processingStatus.translation.processingTime}ms\n**Translation Confidence:** ${(translationData.confidence * 100).toFixed(1)}%\n\n## Summary\n\n${translationData.summary}\n\n## Translated Sections\n\n${translationData.translated_sections.map(section => `### ${section.content}\n\n*Original:* ${section.original}\n`).join('\n')}`;
+                        
+                        return res.json({
+                            success: true,
+                            content: translatedContent,
+                            contentType: 'text/markdown',
+                            documentName: `${document.originalName} (English Translation)`
+                        });
+                    }
+                }
+                
+            } catch (fetchError) {
+                console.error('Error fetching processed content:', fetchError);
+            }
+            
+            // Final fallback
             return res.json({
                 success: true,
-                content: mockContent,
+                content: `# ${document.originalName} - ${version === 'processed' ? 'OCR Results' : 'Translation'}\n\n**Status**: Processing completed but content not available\n\nThe document was processed successfully, but the ${version} content could not be retrieved.\n\n**Processing Details:**\n- Completed: ${new Date(document.processingStatus[version === 'processed' ? 'ocr' : 'translation'].completedAt).toLocaleString()}\n- Processing Time: ${document.processingStatus[version === 'processed' ? 'ocr' : 'translation'].processingTime}ms\n\nPlease try processing the document again.`,
                 contentType: 'text/markdown',
-                documentName: `${document.originalName} (${version})`
+                documentName: `${document.originalName} (${version} - error)`
             });
         }
 
