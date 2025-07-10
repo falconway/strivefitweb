@@ -59,7 +59,11 @@ export default async function handler(req, res) {
             hasBlobUrl: !!documentToDelete.blobUrl
         });
 
-        // Delete from Vercel Blob if it exists
+        // Delete from all storage providers
+        let blobDeleteSuccess = true;
+        let blobDeleteErrors = [];
+        
+        // Delete from Vercel Blob
         if (documentToDelete.blobUrl) {
             try {
                 console.log('🗑️ Deleting from Vercel Blob:', documentToDelete.blobUrl);
@@ -67,11 +71,19 @@ export default async function handler(req, res) {
                 console.log('✅ Successfully deleted from Vercel Blob');
             } catch (blobError) {
                 console.error('❌ Failed to delete from Vercel Blob:', blobError);
-                // Continue with metadata deletion even if blob deletion fails
+                blobDeleteSuccess = false;
+                blobDeleteErrors.push(`Vercel Blob: ${blobError.message}`);
             }
         } else {
-            console.log('ℹ️ No blob URL found, skipping blob deletion');
+            console.log('ℹ️ No Vercel Blob URL found, skipping blob deletion');
         }
+        
+        // Future: Delete from AWS S3 if present
+        if (documentToDelete.awsS3Url) {
+            console.log('ℹ️ AWS S3 URL found but deletion not implemented yet');
+        }
+        
+        // Note: Keep backup URL intact for audit purposes (don't delete from Google Drive)
 
         // Remove document from account
         account.documents.splice(documentIndex, 1);
@@ -86,13 +98,16 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Failed to update account data' });
         }
 
+        // Return success response with details
         res.json({
             success: true,
-            message: 'Document deleted successfully',
+            message: blobDeleteSuccess ? 'Document deleted successfully' : 'Document deleted (some storage errors)',
             deletedDocument: {
                 id: documentToDelete.id,
                 name: documentToDelete.originalName,
-                hadBlobFile: !!documentToDelete.blobUrl
+                hadBlobFile: !!documentToDelete.blobUrl,
+                blobDeleteSuccess: blobDeleteSuccess,
+                errors: blobDeleteErrors
             }
         });
 

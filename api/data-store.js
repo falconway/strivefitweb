@@ -1,4 +1,4 @@
-import { put, list } from '@vercel/blob';
+import { put, list, del } from '@vercel/blob';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -14,11 +14,13 @@ export async function loadAccounts() {
     try {
         console.log('Attempting to load from Vercel Blob...');
         
-        // List blobs to find our accounts data file
+        // List blobs to find our accounts data file (now with timestamp)
         const { blobs } = await list({ prefix: 'accounts-data' });
         console.log('Found blobs:', blobs.map(b => b.pathname));
         
-        const accountsBlob = blobs.find(blob => blob.pathname === ACCOUNTS_BLOB_PATH);
+        // Find the most recent accounts file (sorted by timestamp in filename)
+        const accountsBlobs = blobs.filter(b => b.pathname.startsWith('accounts-data'));
+        const accountsBlob = accountsBlobs.sort((a, b) => b.pathname.localeCompare(a.pathname))[0];
         
         if (accountsBlob) {
             console.log('Found accounts blob at:', accountsBlob.url);
@@ -27,7 +29,7 @@ export async function loadAccounts() {
                 const text = await response.text();
                 accounts = JSON.parse(text);
                 accountsLoaded = true;
-                console.log('✅ Loaded accounts from Vercel Blob:', Object.keys(accounts).length, 'accounts');
+                console.log('✅ Accounts loaded from blob storage');
             } else {
                 console.log('Failed to fetch blob content, status:', response.status);
             }
@@ -38,23 +40,15 @@ export async function loadAccounts() {
         console.log('Blob load failed (expected for first time):', error.message);
     }
     
-    // Fallback to read-only deployment files
+    // Fallback to read-only deployment file (single source of truth)
     if (!accountsLoaded) {
-        const readOnlyPaths = [
-            path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json')
-        ];
-        
-        for (const tryPath of readOnlyPaths) {
-            try {
-                const data = await fs.readFile(tryPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-                console.log('✅ Loaded accounts from deployment files:', Object.keys(accounts).length, 'accounts');
-                break;
-            } catch (error) {
-                continue;
-            }
+        try {
+            const data = await fs.readFile(path.join(process.cwd(), 'backend/data/accounts.json'), 'utf8');
+            accounts = JSON.parse(data);
+            accountsLoaded = true;
+            console.log('✅ Accounts loaded from deployment file');
+        } catch (error) {
+            console.log('⚠️ Failed to load deployment file:', error.message);
         }
     }
     
@@ -64,7 +58,7 @@ export async function loadAccounts() {
             const data = await fs.readFile('/tmp/accounts.json', 'utf8');
             accounts = JSON.parse(data);
             accountsLoaded = true;
-            console.log('✅ Loaded accounts from /tmp:', Object.keys(accounts).length, 'accounts');
+            console.log('✅ Accounts loaded from /tmp');
         } catch (error) {
             accounts = {};
             console.log('🆕 Starting with empty accounts data');
@@ -79,14 +73,34 @@ export async function saveAccounts(accounts) {
     
     const accountsJson = JSON.stringify(accounts, null, 2);
     
-    // Save to Vercel Blob (persistent)
+    // Save to Vercel Blob with cleanup of old versions
     try {
-        const blob = await put(ACCOUNTS_BLOB_PATH, accountsJson, {
+        // Cleanup existing accounts-data files to prevent duplicates
+        try {
+            const { blobs } = await list({ prefix: 'accounts-data' });
+            if (blobs.length > 0) {
+                for (const blob of blobs) {
+                    try {
+                        await del(blob.url);
+                    } catch (delError) {
+                        console.log('⚠️ Failed to delete old file:', blob.pathname);
+                    }
+                }
+            }
+        } catch (listError) {
+            // Ignore cleanup errors
+        }
+        
+        // Small delay to ensure deletions are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Save the new version with timestamp to ensure uniqueness
+        const timestampedPath = `accounts-data-${Date.now()}.json`;
+        const blob = await put(timestampedPath, accountsJson, {
             access: 'public',
             contentType: 'application/json'
         });
-        console.log('✅ Saved accounts to Vercel Blob:', blob.url);
-        console.log('Saved data preview:', accountsJson.substring(0, 200) + '...');
+        console.log('✅ Accounts data saved to blob storage');
     } catch (error) {
         console.error('❌ Failed to save to Vercel Blob:', error);
         throw error;

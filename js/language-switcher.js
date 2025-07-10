@@ -105,7 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'processing-status': 'Processing Status',
             'total-documents': 'Total:',
             'last-update': 'Last update:',
-            'never': 'Never'
+            'never': 'Never',
+            'max-file-size': 'Maximum file size: 4MB'
         },
         'CHN': {
             'nav-about': '关于我们',
@@ -212,7 +213,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'processing-status': '处理状态',
             'total-documents': '总计:',
             'last-update': '最后更新:',
-            'never': '从未'
+            'never': '从未',
+            'max-file-size': '最大文件大小：4MB'
         },
         'ARB': {
             'nav-about': 'حول',
@@ -319,7 +321,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'processing-status': 'حالة المعالجة',
             'total-documents': 'المجموع:',
             'last-update': 'آخر تحديث:',
-            'never': 'أبداً'
+            'never': 'أبداً',
+            'max-file-size': 'الحد الأقصى لحجم الملف: 4 ميجابايت'
         }
     };
 

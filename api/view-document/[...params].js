@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
+import { loadAccounts } from '../data-store.js';
 
 function hashData(data) {
     return crypto.createHash('sha256').update(data).digest('hex');
@@ -37,30 +36,8 @@ export default async function handler(req, res) {
             accountNumber: accountNumber.substring(0, 4) + '****'
         });
 
-        // Try different paths for Vercel deployment
-        let accounts = {};
-        let accountsLoaded = false;
-        
-        const possiblePaths = [
-            path.join(process.cwd(), 'backend/data/accounts.json'),
-            path.join(process.cwd(), 'data/accounts.json'),
-            path.join('/tmp', 'accounts.json')
-        ];
-        
-        for (const tryPath of possiblePaths) {
-            try {
-                const data = await fs.readFile(tryPath, 'utf8');
-                accounts = JSON.parse(data);
-                accountsLoaded = true;
-                break;
-            } catch (error) {
-                continue;
-            }
-        }
-        
-        if (!accountsLoaded) {
-            return res.status(500).json({ error: 'Document data not found' });
-        }
+        // Load accounts data using persistent storage
+        const accounts = await loadAccounts();
 
         const account = accounts[accountNumber];
         
@@ -86,14 +63,24 @@ export default async function handler(req, res) {
             hasBlobUrl: !!document.blobUrl
         });
 
-        // For original version, redirect to blob URL
-        if (version === 'original' && document.blobUrl) {
-            return res.json({
-                success: true,
-                redirectUrl: document.blobUrl,
-                documentName: document.originalName,
-                contentType: document.mimetype
-            });
+        // For original version, redirect to blob URL if available
+        if (version === 'original') {
+            if (document.blobUrl) {
+                return res.json({
+                    success: true,
+                    redirectUrl: document.blobUrl,
+                    documentName: document.originalName,
+                    contentType: document.mimetype
+                });
+            } else {
+                // Handle documents without blob URL (large files or upload failures)
+                return res.json({
+                    success: true,
+                    content: `# ${document.originalName}\n\n**File Preview Not Available**\n\nThis document was uploaded but the file content is not available for preview.\n\nPossible reasons:\n- File is larger than 3MB (currently not stored in blob)\n- Upload partially failed\n- Legacy document from before blob storage\n\nDocument details:\n- Original name: ${document.originalName}\n- Upload date: ${new Date(document.uploadDate).toLocaleString()}\n- File size: ${document.size} bytes\n- MIME type: ${document.mimetype}`,
+                    contentType: 'text/markdown',
+                    documentName: document.originalName
+                });
+            }
         }
         
         // For processed/translated versions, return mock content for now

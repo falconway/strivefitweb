@@ -424,10 +424,9 @@
 
                 <!-- Top - Upload Section -->
                 <div class="dashboard-top">
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 15px; align-items: center;">
                         <button type="button" class="upload-btn-main" id="upload-btn-main" data-i18n="upload-documents">Upload Documents</button>
-                        <button type="button" class="cleanup-btn" id="cleanup-btn" title="Clean up storage inconsistencies" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🧹 Cleanup</button>
-                        <button type="button" class="migrate-btn" id="migrate-btn" title="Migrate old document records" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🔄 Migrate</button>
+                        <span style="color: #6c757d; font-size: 14px;" data-i18n="max-file-size">Maximum file size: 4MB</span>
                     </div>
                 </div>
 
@@ -599,15 +598,8 @@
                 
                 const data = await response.json();
                 
-                console.log('📄 get-documents response:', {
-                    success: data.success,
-                    documentCount: data.documents ? data.documents.length : 0,
-                    documents: data.documents
-                });
-                
                 if (data.success) {
                     allDocuments = data.documents;
-                    console.log('📋 Setting allDocuments to:', allDocuments.length, 'documents');
                     displayDocuments(allDocuments);
                 } else {
                     throw new Error(data.error || 'Failed to load documents');
@@ -826,8 +818,6 @@
             }
             
             try {
-                console.log('🗑️ Starting deletion for document:', documentId);
-                
                 const response = await fetch(`${API_BASE}/delete-document`, {
                     method: 'POST',
                     headers: {
@@ -840,15 +830,10 @@
                 });
                 
                 const data = await response.json();
-                console.log('🗑️ Delete response:', data);
                 
                 if (data.success) {
                     // Update the local allDocuments array immediately
-                    const originalLength = allDocuments.length;
                     allDocuments = allDocuments.filter(doc => doc.id !== documentId);
-                    console.log('📋 Updated allDocuments:', originalLength, '->', allDocuments.length);
-                    
-                    // Update the display immediately
                     displayDocuments(allDocuments);
                     
                     // Then reload from server to ensure consistency
@@ -890,58 +875,47 @@
                 `;
                 uploadProgressContainer.appendChild(progressItem);
 
-                // Check file size and handle appropriately
-                let blobUrl = null;
-                let uploadMethod = 'metadata-only';
+                // Simple file size validation - 4MB limit for reliable Vercel operation
+                const maxFileSize = 4 * 1024 * 1024; // 4MB limit
                 
-                // Vercel function payload limit is ~4.5MB, base64 adds ~33% overhead
-                // So max file size for API upload is ~3MB
-                const maxApiFileSize = 3 * 1024 * 1024; // 3MB
-                
-                if (file.size > maxApiFileSize) {
-                    console.log(`File size ${file.size} bytes exceeds API limit, will upload directly to blob`);
-                    
-                    // TODO: Implement direct blob upload for large files
-                    // For now, just store metadata
-                    uploadMethod = 'large-file-placeholder';
-                    
-                } else {
-                    console.log(`File size ${file.size} bytes is within API limit, uploading via API`);
-                    uploadMethod = 'api-upload';
+                if (file.size > maxFileSize) {
+                    const progressBarFill = document.querySelector(`#${fileId} .progress-bar-fill`);
+                    const progressInfo = document.querySelector(`#${fileId} .progress-item-info`);
+                    progressBarFill.style.width = '100%';
+                    progressBarFill.style.backgroundColor = '#dc3545';
+                    progressInfo.innerHTML = `✗ ${escapeHtml(file.name)} - File too large (max 4MB)`;
+                    completedUploads++;
+                    continue;
                 }
 
-                // Prepare upload data based on file size
-                let uploadData;
+                // Convert file to base64 for API upload
                 let fileDataBase64 = null;
-                
-                if (uploadMethod === 'api-upload') {
-                    // Convert small files to base64 for API upload
-                    try {
-                        fileDataBase64 = await new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                                const base64 = reader.result.split(',')[1];
-                                resolve(base64);
-                            };
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                        });
-                        console.log('File converted to base64, size:', fileDataBase64.length);
-                    } catch (error) {
-                        console.error('Error converting file to base64:', error);
-                        fileDataBase64 = null;
-                    }
+                try {
+                    fileDataBase64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                } catch (error) {
+                    const progressBarFill = document.querySelector(`#${fileId} .progress-bar-fill`);
+                    const progressInfo = document.querySelector(`#${fileId} .progress-item-info`);
+                    progressBarFill.style.width = '100%';
+                    progressBarFill.style.backgroundColor = '#dc3545';
+                    progressInfo.innerHTML = `✗ ${escapeHtml(file.name)} - Failed to process file`;
+                    completedUploads++;
+                    continue;
                 }
                 
-                uploadData = {
+                // Prepare upload data for API
+                const uploadData = {
                     dob: userCredentials.dob,
                     accountNumber: userCredentials.accountNumber,
                     fileName: file.name,
                     fileSize: file.size,
                     fileType: file.type,
                     description: '',
-                    fileDataBase64: fileDataBase64,
-                    uploadMethod: uploadMethod
+                    fileDataBase64: fileDataBase64
                 };
                 
                 try {
@@ -953,19 +927,14 @@
                         body: JSON.stringify(uploadData),
                     });
                     
-                    console.log('Upload response status:', response.status);
-                    console.log('Upload response headers:', [...response.headers.entries()]);
-                    
-                    // Check if response is actually JSON
+                    // Check if response is JSON
                     const contentType = response.headers.get('content-type');
                     if (!contentType || !contentType.includes('application/json')) {
                         const textResponse = await response.text();
-                        console.error('Non-JSON response received:', textResponse);
-                        throw new Error(`Server returned ${contentType}: ${textResponse.substring(0, 200)}`);
+                        throw new Error(`Server error: ${textResponse.substring(0, 200)}`);
                     }
                     
                     const data = await response.json();
-                    console.log('Upload response data:', data);
                     
                     const progressBarFill = document.querySelector(`#${fileId} .progress-bar-fill`);
 
@@ -976,7 +945,9 @@
                         // Show checkmark for success
                         setTimeout(() => {
                             const progressInfo = document.querySelector(`#${fileId} .progress-item-info`);
-                            progressInfo.innerHTML = `✓ ${escapeHtml(file.name)} - Uploaded successfully`;
+                            const hasFile = data.document && data.document.hasFile;
+                            const status = hasFile ? 'Uploaded successfully' : 'Upload completed';
+                            progressInfo.innerHTML = `✓ ${escapeHtml(file.name)} - ${status}`;
                         }, 200);
                     } else {
                         throw new Error(data.error || 'Upload failed');
@@ -994,15 +965,8 @@
                 
                 // If this is the last file, handle completion
                 if (completedUploads === totalFiles) {
-                    console.log('🔄 All uploads completed, refreshing document list...');
-                    
-                    // Refresh the document list immediately
-                    try {
-                        await loadDocuments();
-                        console.log('✅ Document list refreshed successfully');
-                    } catch (error) {
-                        console.error('❌ Failed to refresh document list:', error);
-                    }
+                    // Refresh the document list
+                    await loadDocuments();
                     
                     // Hide upload dialog after a short delay
                     setTimeout(() => {
@@ -1039,8 +1003,6 @@
             const batchDeleteBtn = document.getElementById('batch-delete-btn');
             const batchProcessBtn = document.getElementById('batch-process-btn');
             const searchInput = document.getElementById('search-input');
-            const cleanupBtn = document.getElementById('cleanup-btn');
-            const migrateBtn = document.getElementById('migrate-btn');
 
             uploadBtnMain.addEventListener('click', () => uploadDialog.classList.add('show'));
             closeUploadDialog.addEventListener('click', () => uploadDialog.classList.remove('show'));
@@ -1103,11 +1065,7 @@
                     const data = await response.json();
                     if (data.success) {
                         // Update local allDocuments array immediately
-                        const originalLength = allDocuments.length;
                         allDocuments = allDocuments.filter(doc => !documentIds.includes(doc.id));
-                        console.log('📋 Batch delete - Updated allDocuments:', originalLength, '->', allDocuments.length);
-                        
-                        // Update display immediately
                         displayDocuments(allDocuments);
                         
                         // Clear selections
@@ -1157,103 +1115,7 @@
                 displayDocuments(filteredDocs);
             });
 
-            // Storage cleanup functionality
-            cleanupBtn.addEventListener('click', async () => {
-                try {
-                    cleanupBtn.disabled = true;
-                    cleanupBtn.textContent = '🔄 Analyzing...';
-                    
-                    // First, analyze storage
-                    const analysisResponse = await fetch(`${API_BASE}/cleanup-storage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(userCredentials)
-                    });
-                    
-                    const analysisData = await analysisResponse.json();
-                    
-                    if (analysisData.success) {
-                        const analysis = analysisData.analysis;
-                        let message = `Storage Analysis:\n\n`;
-                        message += `• Total documents: ${analysis.totalDocuments}\n`;
-                        message += `• Documents with files: ${analysis.documentsWithBlobs}\n`;
-                        message += `• Total blob files: ${analysis.totalBlobs}\n`;
-                        message += `• Orphaned files: ${analysis.orphanedBlobs}\n`;
-                        message += `• Broken metadata: ${analysis.brokenMetadata}\n\n`;
-                        
-                        if (analysis.orphanedBlobs > 0 || analysis.brokenMetadata > 0) {
-                            message += `Issues found! Click OK to run cleanup.`;
-                            
-                            if (confirm(message)) {
-                                cleanupBtn.textContent = '🧹 Cleaning...';
-                                
-                                const cleanupResponse = await fetch(`${API_BASE}/cleanup-storage`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        ...userCredentials,
-                                        action: 'cleanup'
-                                    })
-                                });
-                                
-                                const cleanupData = await cleanupResponse.json();
-                                
-                                if (cleanupData.success) {
-                                    const results = cleanupData.cleanupResults;
-                                    alert(`Cleanup completed!\n\n• Orphaned files deleted: ${results.orphanedBlobsDeleted}\n• Broken metadata fixed: ${results.brokenMetadataFixed}\n• Errors: ${results.errors.length}`);
-                                    
-                                    // Refresh document list
-                                    await loadDocuments();
-                                } else {
-                                    throw new Error(cleanupData.error || 'Cleanup failed');
-                                }
-                            }
-                        } else {
-                            alert(message + 'Storage is clean and consistent!');
-                        }
-                    } else {
-                        throw new Error(analysisData.error || 'Analysis failed');
-                    }
-                } catch (error) {
-                    console.error('Error during cleanup:', error);
-                    alert('Error during cleanup: ' + error.message);
-                } finally {
-                    cleanupBtn.disabled = false;
-                    cleanupBtn.textContent = '🧹 Cleanup';
-                }
-            });
 
-            // Document migration functionality
-            migrateBtn.addEventListener('click', async () => {
-                try {
-                    migrateBtn.disabled = true;
-                    migrateBtn.textContent = '🔄 Migrating...';
-                    
-                    const response = await fetch(`${API_BASE}/migrate-documents`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(userCredentials)
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        const stats = data.stats;
-                        alert(`Migration completed!\n\n• Total documents: ${stats.totalDocuments}\n• Migrated: ${stats.migratedDocuments}\n• Already up-to-date: ${stats.alreadyMigrated}`);
-                        
-                        // Refresh document list
-                        await loadDocuments();
-                    } else {
-                        throw new Error(data.error || 'Migration failed');
-                    }
-                } catch (error) {
-                    console.error('Error during migration:', error);
-                    alert('Error during migration: ' + error.message);
-                } finally {
-                    migrateBtn.disabled = false;
-                    migrateBtn.textContent = '🔄 Migrate';
-                }
-            });
 
             const tableBody = document.getElementById('documents-table-body');
             tableBody.addEventListener('click', (e) => {
@@ -1292,7 +1154,7 @@
             });
         });
 
-        async function viewDocument(docId, docName, mimetype, version = 'translated') {
+        async function viewDocument(docId, docName, mimetype, version = 'original') {
             const viewer = document.getElementById('file-viewer');
             const viewerTitle = document.getElementById('viewer-title');
             const viewerActions = document.getElementById('viewer-actions');
