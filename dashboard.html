@@ -733,18 +733,22 @@
 
         async function processDocument(docId) {
             try {
-                const response = await fetch(`${API_BASE}/documents/${docId}/process`, {
+                const response = await fetch(`${API_BASE}/process-document`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userCredentials)
+                    body: JSON.stringify({
+                        ...userCredentials,
+                        documentId: docId
+                    })
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('Document processing started.');
-                    // The backend will update the status, so we just need to refresh the list periodically
-                    setTimeout(loadDocuments, 2100); // Refresh after OCR is expected to be done
-                    setTimeout(loadDocuments, 4200); // Refresh after structuring is expected to be done
-                    setTimeout(loadDocuments, 6300); // Refresh after translation is expected to be done
+                    alert('Document processing started with Qwen AI. This will take 10-30 seconds.');
+                    // Refresh periodically to check real Qwen API processing status
+                    setTimeout(loadDocuments, 5000);  // Check after 5 seconds
+                    setTimeout(loadDocuments, 15000); // Check after 15 seconds  
+                    setTimeout(loadDocuments, 30000); // Check after 30 seconds
+                    setTimeout(loadDocuments, 45000); // Final check after 45 seconds
                 } else {
                     throw new Error(data.error || 'Failed to start processing');
                 }
