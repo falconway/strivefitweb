@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { loadAccounts, saveAccounts } from './data-store.js';
-import QwenSimulator from './services/qwen-simulator.js';
+import QwenAPI from './services/qwen-api.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -78,16 +78,16 @@ export default async function handler(req, res) {
 }
 
 /**
- * Process document asynchronously with Qwen AI Simulator
+ * Process document asynchronously with REAL Qwen AI API
  */
 async function processDocumentAsync(document, accounts, accountNumber) {
-  const qwenSimulator = new QwenSimulator();
+  const qwenAPI = new QwenAPI();
   
   try {
     console.log('🚀 Starting background Qwen processing for:', document.originalName);
     
-    // Process document with Qwen simulator
-    const processResult = await qwenSimulator.processDocument(document, document.blobUrl);
+    // Process document with REAL Qwen API
+    const processResult = await qwenAPI.processDocument(document, document.blobUrl);
     
     // Reload accounts data (it might have been updated)
     const updatedAccounts = await loadAccounts();
@@ -122,10 +122,10 @@ async function processDocumentAsync(document, accounts, accountNumber) {
         }
       };
       
-      // Generate and store processed files
-      const markdownFiles = await qwenSimulator.generateMarkdownFiles(
+      // Generate and store processed files with REAL content
+      const markdownFiles = await qwenAPI.generateMarkdownFiles(
         document, 
-        { text: processResult.extracted_text, confidence: 0.95 },
+        { text: processResult.extracted_text, confidence: processResult.confidence.ocr, model: 'qwen-vl-plus', processingTime: processResult.processing_time.ocr, structured_data: processResult.structured_data },
         processResult.translated_data
       );
       
