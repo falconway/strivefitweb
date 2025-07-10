@@ -1178,10 +1178,14 @@
             });
 
             try {
-                const response = await fetch(`${API_BASE}/view-document/${docId}/${version}`, {
+                const response = await fetch(`${API_BASE}/view-document`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userCredentials)
+                    body: JSON.stringify({
+                        ...userCredentials,
+                        documentId: docId,
+                        version: version
+                    })
                 });
                 
                 if (!response.ok) {

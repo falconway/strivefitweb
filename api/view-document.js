@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { loadAccounts } from '../data-store.js';
+import { loadAccounts } from './data-store.js';
 
 function hashData(data) {
     return crypto.createHash('sha256').update(data).digest('hex');
@@ -20,26 +20,19 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { dob, accountNumber } = req.body;
-        const { params } = req.query;
+        const { dob, accountNumber, documentId, version = 'original' } = req.body;
         
-        console.log('Raw request params:', req.query);
-        console.log('Extracted params:', params);
-        console.log('Request body:', { dob: dob ? '***' : 'missing', accountNumber: accountNumber ? '***' : 'missing' });
-        
-        // Extract documentId and version from params
-        const [documentId, version] = params || [];
+        console.log('View document request:', {
+            documentId,
+            version,
+            accountNumber: accountNumber ? accountNumber.substring(0, 4) + '****' : 'missing',
+            dob: dob ? 'provided' : 'missing'
+        });
 
         if (!dob || !accountNumber || !documentId) {
             console.log('Missing parameters:', { dob: !!dob, accountNumber: !!accountNumber, documentId: !!documentId });
             return res.status(400).json({ error: 'Missing required parameters' });
         }
-
-        console.log('View document request:', {
-            documentId,
-            version,
-            accountNumber: accountNumber.substring(0, 4) + '****'
-        });
 
         // Load accounts data using persistent storage
         const accounts = await loadAccounts();
