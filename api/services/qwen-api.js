@@ -13,8 +13,12 @@ export class QwenAPI {
         this.baseUrl = 'https://dashscope.aliyuncs.com/api/v1';
         
         if (!this.apiKey) {
-            console.error('❌ DASHSCOPE_API_KEY environment variable not set');
+            const error = 'DASHSCOPE_API_KEY environment variable not set';
+            console.error('❌', error);
+            throw new Error(error);
         }
+        
+        console.log('✅ QwenAPI initialized with API key');
     }
 
     /**
@@ -25,15 +29,23 @@ export class QwenAPI {
         
         try {
             console.log(`🔄 Starting REAL Qwen processing for: ${document.originalName}`);
+            console.log(`📥 Blob URL: ${blobUrl}`);
+            console.log(`🔑 API Key available: ${this.apiKey ? 'YES' : 'NO'}`);
             
             // Step 1: Download file from blob storage
+            console.log('📥 Step 1: Downloading file from blob storage...');
             const fileBuffer = await this.downloadFile(blobUrl);
+            console.log(`✅ File downloaded, size: ${fileBuffer.byteLength} bytes`);
             
             // Step 2: OCR with Qwen Vision model
+            console.log('🔍 Step 2: Starting OCR with Qwen Vision...');
             const ocrResult = await this.performOCR(fileBuffer, document);
+            console.log(`✅ OCR completed, extracted ${ocrResult.text.length} characters`);
             
             // Step 3: Translate with Qwen text model  
+            console.log('🌐 Step 3: Starting translation with Qwen Text...');
             const translationResult = await this.performTranslation(ocrResult.text, document);
+            console.log(`✅ Translation completed, translated ${translationResult.translated_text.length} characters`);
             
             const totalTime = Date.now() - startTime;
             
