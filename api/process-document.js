@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { loadAccounts, saveAccounts } from './data-store.js';
-import QwenAPI from './services/qwen-api.js';
+import { QwenAPI } from './services/qwen-api.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
