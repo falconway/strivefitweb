@@ -1119,12 +1119,16 @@
 
             const tableBody = document.getElementById('documents-table-body');
             tableBody.addEventListener('click', (e) => {
+                console.log('Table row clicked:', e.target, e.target.tagName);
                 const row = e.target.closest('tr');
                 if (row && row.dataset.docId) {
                     // Don't trigger if clicking a button or checkbox
                     if (e.target.closest('button') || e.target.matches('input[type="checkbox"]')) {
+                        console.log('Click was on button/checkbox, ignoring');
                         return;
                     }
+                    
+                    console.log('Processing row click for document:', row.dataset.docId);
                     
                     // Remove active class from all rows
                     tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('document-item', 'active'));
@@ -1135,6 +1139,8 @@
                     const docId = row.dataset.docId;
                     const docName = row.dataset.docName;
                     const mimetype = row.dataset.mimetype;
+                    
+                    console.log('Calling viewDocument with:', { docId, docName, mimetype });
                     viewDocument(docId, docName, mimetype);
                 }
             });
@@ -1164,9 +1170,16 @@
         });
 
         async function viewDocument(docId, docName, mimetype, version = 'original') {
+            console.log('viewDocument called with:', { docId, docName, mimetype, version });
+            
             const viewer = document.getElementById('file-viewer');
             const viewerTitle = document.getElementById('viewer-title');
             const viewerActions = document.getElementById('viewer-actions');
+            
+            if (!viewer || !viewerTitle || !viewerActions) {
+                console.error('Viewer elements not found:', { viewer: !!viewer, viewerTitle: !!viewerTitle, viewerActions: !!viewerActions });
+                return;
+            }
             
             viewerTitle.textContent = docName;
             viewer.innerHTML = '<p>Loading preview...</p>';
@@ -1225,13 +1238,21 @@
                             </div>`;
                         } else if (isPdf) {
                             viewer.innerHTML = `<div style="text-align: center;">
-                                <iframe src="${data.redirectUrl}" 
-                                        style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"
-                                        onerror="this.style.display='none'; this.nextSibling.style.display='block';">
-                                </iframe>
-                                <div style="display: none; color: #666; margin-top: 10px;">
-                                    <p>PDF preview failed. <a href="${data.redirectUrl}" target="_blank">Open PDF in new tab</a></p>
+                                <div style="margin-bottom: 15px;">
+                                    <strong>${fileName}</strong>
+                                    <br>
+                                    <a href="${data.redirectUrl}" target="_blank" style="color: #007bff; text-decoration: none;">
+                                        📄 Open PDF in new tab
+                                    </a>
                                 </div>
+                                <iframe src="${data.redirectUrl}#toolbar=0&navpanes=0&scrollbar=0" 
+                                        style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"
+                                        type="application/pdf"
+                                        title="PDF Preview">
+                                    <p>Your browser cannot display this PDF. 
+                                       <a href="${data.redirectUrl}" target="_blank">Click here to open it in a new tab</a>
+                                    </p>
+                                </iframe>
                             </div>`;
                         } else {
                             viewer.innerHTML = `<div style="text-align: center; padding: 40px;">
