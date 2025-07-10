@@ -1125,7 +1125,16 @@
                     if (e.target.closest('button') || e.target.matches('input[type="checkbox"]')) {
                         return;
                     }
-                    const { docId, docName, mimetype } = row.dataset;
+                    
+                    // Remove active class from all rows
+                    tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('document-item', 'active'));
+                    
+                    // Add active class to clicked row
+                    row.classList.add('document-item', 'active');
+                    
+                    const docId = row.dataset.docId;
+                    const docName = row.dataset.docName;
+                    const mimetype = row.dataset.mimetype;
                     viewDocument(docId, docName, mimetype);
                 }
             });
@@ -1189,16 +1198,52 @@
                 if (data.success) {
                     if (data.redirectUrl) {
                         // For original files, show the blob URL content
-                        if (data.contentType.startsWith('image/')) {
-                            viewer.innerHTML = `<img src="${data.redirectUrl}" alt="${data.documentName}" style="max-width: 100%; height: auto;">`;
-                        } else if (data.contentType === 'application/pdf') {
-                            viewer.innerHTML = `<iframe src="${data.redirectUrl}" style="width: 100%; height: 600px; border: none;"></iframe>`;
+                        const contentType = data.contentType || mimetype || '';
+                        const fileName = data.documentName || docName;
+                        const extension = fileName.split('.').pop()?.toLowerCase() || '';
+                        
+                        // Detect image files
+                        const imageTypes = ['image/', 'jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'svg'];
+                        const isImage = imageTypes.some(type => 
+                            contentType.includes(type) || extension === type.replace('image/', ''));
+                        
+                        // Detect PDF files
+                        const isPdf = contentType.includes('pdf') || extension === 'pdf';
+                        
+                        if (isImage) {
+                            viewer.innerHTML = `<div style="text-align: center; padding: 20px;">
+                                <img src="${data.redirectUrl}" alt="${fileName}" 
+                                     style="max-width: 100%; max-height: 80vh; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                                     onerror="this.style.display='none'; this.nextSibling.style.display='block';">
+                                <div style="display: none; color: #666; margin-top: 10px;">
+                                    <p>Image preview failed. <a href="${data.redirectUrl}" target="_blank">View original file</a></p>
+                                </div>
+                            </div>`;
+                        } else if (isPdf) {
+                            viewer.innerHTML = `<div style="text-align: center;">
+                                <iframe src="${data.redirectUrl}" 
+                                        style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"
+                                        onerror="this.style.display='none'; this.nextSibling.style.display='block';">
+                                </iframe>
+                                <div style="display: none; color: #666; margin-top: 10px;">
+                                    <p>PDF preview failed. <a href="${data.redirectUrl}" target="_blank">Open PDF in new tab</a></p>
+                                </div>
+                            </div>`;
                         } else {
-                            viewer.innerHTML = `<p>Document: <a href="${data.redirectUrl}" target="_blank">${data.documentName}</a></p>`;
+                            viewer.innerHTML = `<div style="text-align: center; padding: 40px;">
+                                <p style="margin-bottom: 20px;">Document preview not available for this file type.</p>
+                                <a href="${data.redirectUrl}" target="_blank" class="upload-btn" style="text-decoration: none;">
+                                    📄 Open ${fileName}
+                                </a>
+                            </div>`;
                         }
                     } else if (data.content) {
                         // For processed/translated content, render as markdown
-                        viewer.innerHTML = `<div style="padding: 20px; white-space: pre-wrap; font-family: monospace;">${escapeHtml(data.content)}</div>`;
+                        if (typeof marked !== 'undefined') {
+                            viewer.innerHTML = `<div style="padding: 20px; max-width: 100%; overflow-wrap: break-word;">${marked.parse(data.content)}</div>`;
+                        } else {
+                            viewer.innerHTML = `<div style="padding: 20px; white-space: pre-wrap; font-family: monospace; max-width: 100%; overflow-wrap: break-word;">${escapeHtml(data.content)}</div>`;
+                        }
                     }
                 } else {
                     throw new Error(data.error || 'Failed to load document');
@@ -1214,10 +1259,11 @@
         document.getElementById('viewer-actions').addEventListener('click', (e) => {
             if (e.target.matches('.viewer-btn')) {
                 const version = e.target.dataset.view;
-                const docId = document.querySelector('.document-item.active')?.dataset.docId;
-                const docName = document.querySelector('.document-item.active')?.dataset.docName;
-                const mimetype = document.querySelector('.document-item.active')?.dataset.mimetype;
-                if (docId) {
+                const activeRow = document.querySelector('.document-item.active');
+                if (activeRow) {
+                    const docId = activeRow.dataset.docId;
+                    const docName = activeRow.dataset.docName;
+                    const mimetype = activeRow.dataset.mimetype;
                     viewDocument(docId, docName, mimetype, version);
                 }
             }

@@ -38,12 +38,16 @@ export default async function handler(req, res) {
 
         // Load accounts data using persistent storage
         const accounts = await loadAccounts();
+        console.log('Loaded accounts count:', Object.keys(accounts).length);
 
         const account = accounts[accountNumber];
         
         if (!account) {
+            console.log('Account not found:', accountNumber, 'Available accounts:', Object.keys(accounts).slice(0, 3));
             return res.status(401).json({ error: 'Invalid account' });
         }
+        
+        console.log('Account found with', account.documents?.length || 0, 'documents');
         
         // Verify credentials
         const combinedHash = hashData(dob + accountNumber);
@@ -66,6 +70,7 @@ export default async function handler(req, res) {
         // For original version, redirect to blob URL if available
         if (version === 'original') {
             if (document.blobUrl) {
+                console.log('Returning blob URL:', document.blobUrl);
                 return res.json({
                     success: true,
                     redirectUrl: document.blobUrl,
@@ -73,10 +78,11 @@ export default async function handler(req, res) {
                     contentType: document.mimetype
                 });
             } else {
-                // Handle documents without blob URL (large files or upload failures)
+                console.log('No blob URL found for document:', document.id);
+                // Handle documents without blob URL (legacy documents or upload failures)
                 return res.json({
                     success: true,
-                    content: `# ${document.originalName}\n\n**File Preview Not Available**\n\nThis document was uploaded but the file content is not available for preview.\n\nPossible reasons:\n- File is larger than 3MB (currently not stored in blob)\n- Upload partially failed\n- Legacy document from before blob storage\n\nDocument details:\n- Original name: ${document.originalName}\n- Upload date: ${new Date(document.uploadDate).toLocaleString()}\n- File size: ${document.size} bytes\n- MIME type: ${document.mimetype}`,
+                    content: `# ${document.originalName}\n\n**File Preview Not Available**\n\nThis document was uploaded but the file content is not available for preview.\n\nPossible reasons:\n- Legacy document from before Vercel Blob storage\n- Upload partially failed\n- File was not stored in blob storage\n\nDocument details:\n- Original name: ${document.originalName}\n- Upload date: ${new Date(document.uploadDate).toLocaleString()}\n- File size: ${document.size ? Math.round(document.size/1024) + ' KB' : 'Unknown'}\n- MIME type: ${document.mimetype || 'Unknown'}\n\n**Note**: You can try re-uploading this file to enable preview functionality.`,
                     contentType: 'text/markdown',
                     documentName: document.originalName
                 });
