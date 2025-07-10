@@ -236,6 +236,17 @@
             }
         }
         
+        /* Processing progress animation */
+        .processing-progress {
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            animation: processing-pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes processing-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -460,6 +471,17 @@
                             <input type="file" id="file-input" class="file-input" accept=".pdf,.jpg,.jpeg,.png,.tiff,.gif,.bmp,.webp,.txt,.md,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.dcm,.zip,.rar,.7z" multiple>
                         </div>
                         <div id="upload-progress-container" class="upload-progress-container"></div>
+                    </div>
+                </div>
+
+                <!-- Processing Dialog -->
+                <div id="processing-dialog" class="upload-dialog">
+                    <div class="upload-dialog-header">
+                        <h4 data-i18n="processing-title">Processing Medical Documents</h4>
+                        <button id="close-processing-dialog" class="close-btn">&times;</button>
+                    </div>
+                    <div class="upload-dialog-body">
+                        <div id="processing-progress-container" class="upload-progress-container"></div>
                     </div>
                 </div>
 
@@ -733,6 +755,49 @@
 
         async function processDocument(docId) {
             try {
+                // Find document name for display
+                const document = allDocuments.find(doc => doc.id === docId);
+                const documentName = document ? document.originalName : 'Document';
+                
+                // Show processing dialog
+                const processingDialog = document.getElementById('processing-dialog');
+                const processingContainer = document.getElementById('processing-progress-container');
+                
+                // Create processing progress item
+                const progressItem = document.createElement('div');
+                progressItem.className = 'upload-progress-item';
+                progressItem.innerHTML = `
+                    <div class="upload-progress-info">
+                        <span class="upload-filename">${documentName}</span>
+                        <span class="upload-status" data-i18n="processing-status">Processing document...</span>
+                    </div>
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-fill processing-progress"></div>
+                    </div>
+                    <div class="upload-progress-percent">0%</div>
+                `;
+                
+                processingContainer.innerHTML = '';
+                processingContainer.appendChild(progressItem);
+                processingDialog.classList.add('show');
+                
+                // Start processing animation
+                const progressFill = progressItem.querySelector('.upload-progress-fill');
+                const progressPercent = progressItem.querySelector('.upload-progress-percent');
+                const statusElement = progressItem.querySelector('.upload-status');
+                
+                let progress = 0;
+                const animateProgress = () => {
+                    if (progress < 95) {
+                        progress += Math.random() * 3;
+                        progressFill.style.width = `${Math.min(progress, 95)}%`;
+                        progressPercent.textContent = `${Math.round(Math.min(progress, 95))}%`;
+                    }
+                };
+                
+                const progressInterval = setInterval(animateProgress, 500);
+                
+                // Make API request
                 const response = await fetch(`${API_BASE}/process-document`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -742,19 +807,86 @@
                     })
                 });
                 const data = await response.json();
+                
                 if (data.success) {
-                    alert('Document processing started with Qwen AI. This will take 10-30 seconds.');
-                    // Refresh periodically to check real Qwen API processing status
-                    setTimeout(loadDocuments, 5000);  // Check after 5 seconds
-                    setTimeout(loadDocuments, 15000); // Check after 15 seconds  
-                    setTimeout(loadDocuments, 30000); // Check after 30 seconds
-                    setTimeout(loadDocuments, 45000); // Final check after 45 seconds
+                    // Update status to different phases
+                    setTimeout(() => {
+                        statusElement.setAttribute('data-i18n', 'processing-ocr');
+                        statusElement.textContent = 'Extracting text content...';
+                    }, 2000);
+                    
+                    setTimeout(() => {
+                        statusElement.setAttribute('data-i18n', 'processing-translation');
+                        statusElement.textContent = 'Translating document...';
+                    }, 8000);
+                    
+                    // Check processing status periodically
+                    const checkStatus = async () => {
+                        try {
+                            await loadDocuments();
+                            const updatedDoc = allDocuments.find(doc => doc.id === docId);
+                            
+                            if (updatedDoc && updatedDoc.processed) {
+                                // Processing complete
+                                clearInterval(progressInterval);
+                                progress = 100;
+                                progressFill.style.width = '100%';
+                                progressPercent.textContent = '100%';
+                                statusElement.setAttribute('data-i18n', 'processing-complete');
+                                statusElement.textContent = 'Processing complete';
+                                progressFill.style.backgroundColor = '#28a745';
+                                
+                                // Hide dialog after success
+                                setTimeout(() => {
+                                    processingDialog.classList.remove('show');
+                                    processingContainer.innerHTML = '';
+                                }, 2000);
+                                
+                                return true;
+                            }
+                        } catch (error) {
+                            console.error('Status check error:', error);
+                        }
+                        return false;
+                    };
+                    
+                    // Check status every 5 seconds for up to 60 seconds
+                    let statusChecks = 0;
+                    const maxChecks = 12;
+                    const statusInterval = setInterval(async () => {
+                        statusChecks++;
+                        const isComplete = await checkStatus();
+                        
+                        if (isComplete || statusChecks >= maxChecks) {
+                            clearInterval(statusInterval);
+                            if (!isComplete) {
+                                // Timeout - show manual refresh message
+                                statusElement.setAttribute('data-i18n', 'processing-refresh');
+                                statusElement.textContent = 'Processing may still be running. Please refresh the page.';
+                                setTimeout(() => {
+                                    processingDialog.classList.remove('show');
+                                    processingContainer.innerHTML = '';
+                                }, 3000);
+                            }
+                        }
+                    }, 5000);
+                    
                 } else {
                     throw new Error(data.error || 'Failed to start processing');
                 }
             } catch (error) {
                 console.error('Error starting document processing:', error);
-                alert('Error starting document processing.');
+                
+                // Show error in dialog
+                const statusElement = document.querySelector('#processing-progress-container .upload-status');
+                if (statusElement) {
+                    statusElement.setAttribute('data-i18n', 'processing-error');
+                    statusElement.textContent = 'Processing failed. Please try again.';
+                    setTimeout(() => {
+                        document.getElementById('processing-dialog').classList.remove('show');
+                        document.getElementById('processing-progress-container').innerHTML = '';
+                    }, 3000);
+                }
             }
         }
 
@@ -1019,6 +1151,8 @@
             const uploadBtnMain = document.getElementById('upload-btn-main');
             const uploadDialog = document.getElementById('upload-dialog');
             const closeUploadDialog = document.getElementById('close-upload-dialog');
+            const processingDialog = document.getElementById('processing-dialog');
+            const closeProcessingDialog = document.getElementById('close-processing-dialog');
             const dropZone = document.getElementById('drop-zone');
             const headerCheckbox = document.getElementById('select-all-header-checkbox');
             const batchDownloadBtn = document.getElementById('batch-download-btn');
@@ -1028,6 +1162,7 @@
 
             uploadBtnMain.addEventListener('click', () => uploadDialog.classList.add('show'));
             closeUploadDialog.addEventListener('click', () => uploadDialog.classList.remove('show'));
+            closeProcessingDialog.addEventListener('click', () => processingDialog.classList.remove('show'));
             dropZone.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) window.uploadFiles(e.target.files);

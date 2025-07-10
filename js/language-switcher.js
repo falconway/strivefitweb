@@ -106,7 +106,16 @@ document.addEventListener('DOMContentLoaded', function() {
             'total-documents': 'Total:',
             'last-update': 'Last update:',
             'never': 'Never',
-            'max-file-size': 'Maximum file size: 4MB'
+            'max-file-size': 'Maximum file size: 4MB',
+            
+            // Processing translations
+            'processing-title': 'Processing Medical Documents',
+            'processing-status': 'Processing document...',
+            'processing-ocr': 'Extracting text content...',
+            'processing-translation': 'Translating document...',
+            'processing-complete': 'Processing complete',
+            'processing-refresh': 'Processing may still be running. Please refresh the page.',
+            'processing-error': 'Processing failed. Please try again.'
         },
         'CHN': {
             'nav-about': '关于我们',
@@ -214,7 +223,16 @@ document.addEventListener('DOMContentLoaded', function() {
             'total-documents': '总计:',
             'last-update': '最后更新:',
             'never': '从未',
-            'max-file-size': '最大文件大小：4MB'
+            'max-file-size': '最大文件大小：4MB',
+            
+            // Processing translations
+            'processing-title': '处理医疗文档',
+            'processing-status': '正在处理文档...',
+            'processing-ocr': '正在提取文本内容...',
+            'processing-translation': '正在翻译文档...',
+            'processing-complete': '处理完成',
+            'processing-refresh': '处理可能仍在进行中，请刷新页面。',
+            'processing-error': '处理失败，请重试。'
         },
         'ARB': {
             'nav-about': 'حول',
@@ -322,7 +340,16 @@ document.addEventListener('DOMContentLoaded', function() {
             'total-documents': 'المجموع:',
             'last-update': 'آخر تحديث:',
             'never': 'أبداً',
-            'max-file-size': 'الحد الأقصى لحجم الملف: 4 ميجابايت'
+            'max-file-size': 'الحد الأقصى لحجم الملف: 4 ميجابايت',
+            
+            // Processing translations
+            'processing-title': 'معالجة المستندات الطبية',
+            'processing-status': 'جاري معالجة المستند...',
+            'processing-ocr': 'جاري استخراج محتوى النص...',
+            'processing-translation': 'جاري ترجمة المستند...',
+            'processing-complete': 'اكتملت المعالجة',
+            'processing-refresh': 'قد تكون المعالجة لا تزال قيد التشغيل. يرجى تحديث الصفحة.',
+            'processing-error': 'فشلت المعالجة. يرجى المحاولة مرة أخرى.'
         }
     };
 
