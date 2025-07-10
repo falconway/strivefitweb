@@ -427,6 +427,7 @@
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button type="button" class="upload-btn-main" id="upload-btn-main" data-i18n="upload-documents">Upload Documents</button>
                         <button type="button" class="cleanup-btn" id="cleanup-btn" title="Clean up storage inconsistencies" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🧹 Cleanup</button>
+                        <button type="button" class="migrate-btn" id="migrate-btn" title="Migrate old document records" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🔄 Migrate</button>
                     </div>
                 </div>
 
@@ -825,6 +826,8 @@
             }
             
             try {
+                console.log('🗑️ Starting deletion for document:', documentId);
+                
                 const response = await fetch(`${API_BASE}/delete-document`, {
                     method: 'POST',
                     headers: {
@@ -837,16 +840,27 @@
                 });
                 
                 const data = await response.json();
+                console.log('🗑️ Delete response:', data);
                 
                 if (data.success) {
+                    // Update the local allDocuments array immediately
+                    const originalLength = allDocuments.length;
+                    allDocuments = allDocuments.filter(doc => doc.id !== documentId);
+                    console.log('📋 Updated allDocuments:', originalLength, '->', allDocuments.length);
+                    
+                    // Update the display immediately
+                    displayDocuments(allDocuments);
+                    
+                    // Then reload from server to ensure consistency
                     await loadDocuments();
+                    
                     alert('Document deleted successfully');
                 } else {
                     throw new Error(data.error || 'Delete failed');
                 }
             } catch (error) {
                 console.error('Error deleting document:', error);
-                alert('Error deleting document');
+                alert('Error deleting document: ' + error.message);
             }
         }
 
@@ -1026,6 +1040,7 @@
             const batchProcessBtn = document.getElementById('batch-process-btn');
             const searchInput = document.getElementById('search-input');
             const cleanupBtn = document.getElementById('cleanup-btn');
+            const migrateBtn = document.getElementById('migrate-btn');
 
             uploadBtnMain.addEventListener('click', () => uploadDialog.classList.add('show'));
             closeUploadDialog.addEventListener('click', () => uploadDialog.classList.remove('show'));
@@ -1087,7 +1102,21 @@
                     });
                     const data = await response.json();
                     if (data.success) {
+                        // Update local allDocuments array immediately
+                        const originalLength = allDocuments.length;
+                        allDocuments = allDocuments.filter(doc => !documentIds.includes(doc.id));
+                        console.log('📋 Batch delete - Updated allDocuments:', originalLength, '->', allDocuments.length);
+                        
+                        // Update display immediately
+                        displayDocuments(allDocuments);
+                        
+                        // Clear selections
+                        document.querySelectorAll('.document-select').forEach(cb => cb.checked = false);
+                        updateSelection();
+                        
                         alert(`Successfully deleted ${data.deletedCount} document(s).`);
+                        
+                        // Reload from server to ensure consistency
                         await loadDocuments();
                     } else {
                         throw new Error(data.error || 'Batch delete failed');
@@ -1191,6 +1220,38 @@
                 } finally {
                     cleanupBtn.disabled = false;
                     cleanupBtn.textContent = '🧹 Cleanup';
+                }
+            });
+
+            // Document migration functionality
+            migrateBtn.addEventListener('click', async () => {
+                try {
+                    migrateBtn.disabled = true;
+                    migrateBtn.textContent = '🔄 Migrating...';
+                    
+                    const response = await fetch(`${API_BASE}/migrate-documents`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userCredentials)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const stats = data.stats;
+                        alert(`Migration completed!\n\n• Total documents: ${stats.totalDocuments}\n• Migrated: ${stats.migratedDocuments}\n• Already up-to-date: ${stats.alreadyMigrated}`);
+                        
+                        // Refresh document list
+                        await loadDocuments();
+                    } else {
+                        throw new Error(data.error || 'Migration failed');
+                    }
+                } catch (error) {
+                    console.error('Error during migration:', error);
+                    alert('Error during migration: ' + error.message);
+                } finally {
+                    migrateBtn.disabled = false;
+                    migrateBtn.textContent = '🔄 Migrate';
                 }
             });
 
