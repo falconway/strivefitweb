@@ -53,3 +53,4 @@ PRIVATE_*.md
 
 # Vercel
 .vercel
+.env*.local
