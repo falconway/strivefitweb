@@ -38,7 +38,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 2048,
-                timeout: 30000, // 30 seconds - within Vercel limits
+                timeout: 15000, // 15 seconds - very aggressive for sync processing
                 description: 'Free Google model, good OCR quality'
             },
             'qwen/qwen-2.5-vl-72b-instruct': {
@@ -46,7 +46,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 4096,
-                timeout: 40000, // 40 seconds - within Vercel limits
+                timeout: 20000, // 20 seconds - aggressive for sync processing
                 description: 'Free Qwen model, excellent for Chinese medical documents'
             },
             

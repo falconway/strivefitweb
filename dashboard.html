@@ -797,8 +797,8 @@
                 
                 const progressInterval = setInterval(animateProgress, 500);
                 
-                // Make API request
-                const response = await fetch(`${API_BASE}/process-document`, {
+                // Make API request to synchronous endpoint
+                const response = await fetch(`${API_BASE}/process-document-sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -809,16 +809,31 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Update status to different phases
+                    // Synchronous processing - complete immediately
+                    clearInterval(progressInterval);
+                    progress = 100;
+                    progressFill.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    statusElement.setAttribute('data-i18n', 'processing-complete');
+                    statusElement.textContent = 'Processing complete';
+                    progressFill.style.backgroundColor = '#28a745';
+                    
+                    // Show success details
+                    console.log('✅ Processing completed:', data);
+                    console.log('🎯 Model used:', data.model_used);
+                    console.log('💰 Estimated cost:', data.estimated_cost);
+                    console.log('⏱️ Processing time:', data.processing_time);
+                    
+                    // Reload documents to show updated status
+                    await loadDocuments();
+                    
+                    // Hide dialog after success
                     setTimeout(() => {
-                        statusElement.setAttribute('data-i18n', 'processing-ocr');
-                        statusElement.textContent = 'Extracting text content...';
+                        processingDialog.classList.remove('show');
+                        processingContainer.innerHTML = '';
                     }, 2000);
                     
-                    setTimeout(() => {
-                        statusElement.setAttribute('data-i18n', 'processing-translation');
-                        statusElement.textContent = 'Translating document...';
-                    }, 8000);
+                    // Skip the old async polling code
                     
                     // Check processing status periodically
                     const checkStatus = async () => {
