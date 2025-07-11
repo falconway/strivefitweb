@@ -54,3 +54,8 @@ PRIVATE_*.md
 # Vercel
 .vercel
 .env*.local
+
+# Railway storage (persistent volume)
+storage/
+uploads/
+processed/

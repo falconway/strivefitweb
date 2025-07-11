@@ -1,0 +1,19 @@
+[build]
+command = "npm install"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[variables]
+# Environment variables for Railway deployment
+NODE_ENV = "production"
+OPENROUTER_API_KEY = "${{OPENROUTER_API_KEY}}"
+RAILWAY_STORAGE_PATH = "/app/storage"
+
+[volumes]
+# Persistent storage for Railway
+storage = "/app/storage"

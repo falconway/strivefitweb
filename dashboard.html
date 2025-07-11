@@ -628,21 +628,19 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/get-documents`, {
-                    method: 'POST',
+                const response = await fetch(`${API_BASE}/documents/${userCredentials.accountNumber}`, {
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json; charset=utf-8',
-                    },
-                    body: JSON.stringify(userCredentials)
+                    }
                 });
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    allDocuments = data.documents;
+                if (response.ok) {
+                    allDocuments = await response.json();
                     displayDocuments(allDocuments);
                 } else {
-                    throw new Error(data.error || 'Failed to load documents');
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to load documents');
                 }
             } catch (error) {
                 console.error('Error loading documents:', error);
@@ -798,13 +796,9 @@
                 const progressInterval = setInterval(animateProgress, 500);
                 
                 // Make API request to synchronous endpoint
-                const response = await fetch(`${API_BASE}/process-document-sync`, {
+                const response = await fetch(`${API_BASE}/documents/${docId}/process`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...userCredentials,
-                        documentId: docId
-                    })
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 const data = await response.json();
                 
@@ -987,15 +981,11 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/delete-document`, {
-                    method: 'POST',
+                const response = await fetch(`${API_BASE}/documents/${documentId}`, {
+                    method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json; charset=utf-8',
-                    },
-                    body: JSON.stringify({
-                        ...userCredentials,
-                        documentId: documentId
-                    })
+                    }
                 });
                 
                 const data = await response.json();
@@ -1088,12 +1078,14 @@
                 };
                 
                 try {
-                    const response = await fetch(`${API_BASE}/upload-document`, {
+                    const formData = new FormData();
+                    for (const file of files) {
+                        formData.append('files', file);
+                    }
+                    
+                    const response = await fetch(`${API_BASE}/upload/${userCredentials.accountNumber}`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(uploadData),
+                        body: formData,
                     });
                     
                     // Check if response is JSON
@@ -1363,14 +1355,9 @@
             });
 
             try {
-                const response = await fetch(`${API_BASE}/view-document`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...userCredentials,
-                        documentId: docId,
-                        version: version
-                    })
+                const response = await fetch(`${API_BASE}/view-document/${docId}/${version}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
                 if (!response.ok) {

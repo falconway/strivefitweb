@@ -1,0 +1,114 @@
+⏺ Perfect choice! Railway is much better for your medical document processing needs. Here's your migration plan:
+
+  🚀 Railway Migration Instructions
+
+  Step 1: Sign Up & Setup
+
+  1. Go to https://railway.app/
+  2. Sign up with your GitHub account
+  3. Connect your existing repository: falconway/strivefitweb
+
+  Step 2: Deploy Setup
+
+  1. Create New Project → Deploy from GitHub
+  2. Select your repo → strivefitweb
+  3. Framework: Node.js (Railway will auto-detect)
+  4. Root Directory: Leave empty (uses project root)
+
+  Step 3: Environment Variables
+
+  Add these in Railway Dashboard → Settings → Environment:
+  OPENROUTER_API_KEY=your_openrouter_key
+  OPENROUTER_MODEL=google/gemini-flash-1.5
+  BLOB_READ_WRITE_TOKEN=your_blob_token
+  NODE_ENV=production
+
+  Step 4: Database/Storage
+
+  - Keep Vercel Blob for file storage (works from anywhere)
+  - Keep JSON accounts system for now
+  - Railway provides Redis/Postgres if needed later
+
+  Step 5: Domain Setup
+
+  - Railway gives you: yourapp.railway.app
+  - Custom domain: Add your domain in Railway settings
+  - SSL: Automatic (like Vercel)
+
+  Step 6: Code Changes
+
+  - Remove Vercel-specific code (function timeouts, etc.)
+  - Keep OpenRouter integration - will work better on Railway
+  - Increase timeouts - Railway handles long-running processes
+
+  Expected Benefits:
+
+  - ✅ No timeout issues - Persistent services
+  - ✅ Chinese access - Good Asia performance
+  - ✅ Reliable processing - No function limitations
+  - ✅ $5/month - Predictable costs
+
+  Ready to migrate? It should be much smoother than fighting Vercel's limitations!
+
+> i want to use railway's own storage instead of blob. keep eveyrthing in the railway.
+  ⎿  ⧉ Selected 1 lines from backend/data/accounts.json in Visual Studio Code
+
+⏺ Perfect! Using Railway's own storage will simplify everything and keep it all in one place. Here's the complete migration plan:
+
+  🚀 Railway Migration with Railway Storage
+
+  Step 1: Railway Setup
+
+  1. Go to https://railway.app/
+  2. Sign up with GitHub
+  3. Create New Project → Deploy from GitHub
+  4. Select falconway/strivefitweb
+
+  Step 2: Add Railway Storage
+
+  1. In Railway Dashboard → Add Service → Volume
+  2. Mount Path: /app/storage
+  3. Size: 5GB (expandable)
+  4. This gives you persistent file storage
+
+  Step 3: Environment Variables
+
+  OPENROUTER_API_KEY=your_openrouter_key
+  OPENROUTER_MODEL=google/gemini-flash-1.5
+  RAILWAY_STORAGE_PATH=/app/storage
+  NODE_ENV=production
+  PORT=3000
+
+  Step 4: Code Changes for Railway Storage
+
+  Replace Vercel Blob with Railway file system:
+  - Accounts: /app/storage/accounts.json
+  - Uploaded files: /app/storage/uploads/[account]/[filename]
+  - Processed files: /app/storage/processed/[account]/[filename]
+
+  Step 5: Storage Structure
+
+  /app/storage/
+  ├── accounts.json
+  ├── uploads/
+  │   └── 50-63-85-6521-18-4989/
+  │       └── [uploaded-files]
+  └── processed/
+      └── 50-63-85-6521-18-4989/
+          └── [processed-files]
+
+  Benefits of Railway Storage:
+
+  - ✅ No blob complexity - Simple file system
+  - ✅ Persistent storage - Survives deployments
+  - ✅ No external dependencies - Everything in Railway
+  - ✅ Chinese access - Direct file serving
+  - ✅ Better performance - No external API calls
+
+  Next Steps:
+
+  1. Set up Railway with the above config
+  2. I'll help you migrate the storage code in our next conversation
+  3. Test with Chinese clients - should work perfectly
+
+  Ready to proceed? Railway + Railway Storage will be much more reliable than Vercel Blob! 🎯
