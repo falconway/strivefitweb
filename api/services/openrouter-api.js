@@ -9,8 +9,15 @@ export class OpenRouterAPI {
     constructor() {
         this.apiKey = process.env.OPENROUTER_API_KEY;
         this.baseUrl = 'https://openrouter.ai/api/v1';
-        this.selectedModel = process.env.OPENROUTER_MODEL || 'google/gemini-flash-1.5';
-        this.backupModel = process.env.OPENROUTER_BACKUP_MODEL || 'meta-llama/llama-3.2-vision';
+        
+        // Auto-fallback model chain: Free → Ultra-cheap → Premium
+        this.modelChain = [
+            'google/gemini-flash-1.5',        // Free
+            'meta-llama/llama-3.2-vision',    // Free
+            'anthropic/claude-3-haiku-vision', // Ultra-cheap
+            'openai/gpt-4o-mini',             // Ultra-cheap
+            'openai/gpt-4-vision-preview'     // Premium (last resort)
+        ];
         
         if (!this.apiKey) {
             const error = 'OPENROUTER_API_KEY environment variable not set';
@@ -19,8 +26,8 @@ export class OpenRouterAPI {
         }
         
         console.log('✅ OpenRouter API initialized');
-        console.log('🎯 Primary model:', this.selectedModel);
-        console.log('🔄 Backup model:', this.backupModel);
+        console.log('🎯 Auto-model selection enabled');
+        console.log('🔄 Model chain:', this.modelChain.join(' → '));
     }
 
     /**
@@ -34,7 +41,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 2048,
-                timeout: 30000,
+                timeout: 20000, // Shorter timeout for faster fallback
                 description: 'Free Google model, good OCR quality'
             },
             'meta-llama/llama-3.2-vision': {
@@ -42,7 +49,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free', 
                 maxTokens: 2048,
-                timeout: 30000,
+                timeout: 20000, // Shorter timeout for faster fallback
                 description: 'Free Meta model, solid OCR performance'
             },
             
@@ -52,7 +59,7 @@ export class OpenRouterAPI {
                 cost: 0.00025,
                 tier: 'ultra-cheap',
                 maxTokens: 4096,
-                timeout: 45000,
+                timeout: 30000, // Reliable model, slightly longer timeout
                 description: 'Very affordable, excellent medical accuracy'
             },
             'openai/gpt-4o-mini': {
@@ -60,7 +67,7 @@ export class OpenRouterAPI {
                 cost: 0.00015,
                 tier: 'ultra-cheap',
                 maxTokens: 4096,
-                timeout: 45000,
+                timeout: 30000, // Reliable model, slightly longer timeout
                 description: 'Cheapest OpenAI model, great quality'
             },
             
@@ -70,7 +77,7 @@ export class OpenRouterAPI {
                 cost: 0.01,
                 tier: 'premium',
                 maxTokens: 4096,
-                timeout: 60000,
+                timeout: 45000, // Premium model, longer timeout
                 description: 'Best medical OCR accuracy, professional translation'
             },
             'anthropic/claude-3.5-sonnet-vision': {
@@ -78,7 +85,7 @@ export class OpenRouterAPI {
                 cost: 0.003,
                 tier: 'premium',
                 maxTokens: 4096,
-                timeout: 60000,
+                timeout: 45000, // Premium model, longer timeout
                 description: 'Excellent medical document analysis'
             }
         };
@@ -136,7 +143,7 @@ FORMAT your response as a structured medical report in English:
     }
 
     /**
-     * Process medical document with OCR + translation in single step
+     * Process medical document with automatic model selection
      */
     async processDocument(document, blobUrl) {
         const startTime = Date.now();
@@ -144,26 +151,55 @@ FORMAT your response as a structured medical report in English:
         try {
             console.log(`🔄 Starting OpenRouter processing for: ${document.originalName}`);
             console.log(`📥 Blob URL: ${blobUrl}`);
+            console.log(`🎯 Auto-trying models: ${this.modelChain.join(' → ')}`);
             
-            // Try primary model first
-            let result = await this.processWithModel(this.selectedModel, document, blobUrl);
+            let result = null;
+            let modelTried = 0;
             
-            // If primary fails, try backup model
-            if (!result.success && this.backupModel !== this.selectedModel) {
-                console.log('⚠️ Primary model failed, trying backup model...');
-                result = await this.processWithModel(this.backupModel, document, blobUrl);
+            // Try each model in the chain until one succeeds
+            for (const modelName of this.modelChain) {
+                modelTried++;
+                console.log(`🔄 Attempt ${modelTried}/${this.modelChain.length}: Trying ${modelName}`);
+                
+                result = await this.processWithModel(modelName, document, blobUrl);
+                
+                if (result.success) {
+                    console.log(`✅ Success with ${modelName} on attempt ${modelTried}`);
+                    break;
+                } else {
+                    console.log(`❌ Failed with ${modelName}: ${result.error}`);
+                    
+                    // If not the last model, continue to next
+                    if (modelTried < this.modelChain.length) {
+                        console.log(`🔄 Trying next model...`);
+                        continue;
+                    }
+                }
             }
             
             const totalTime = Date.now() - startTime;
-            console.log(`✅ OpenRouter processing completed in ${totalTime}ms`);
             
-            return {
-                ...result,
-                processing_time: {
-                    total: totalTime,
-                    ocr_translation: result.processing_time || totalTime
-                }
-            };
+            if (result && result.success) {
+                console.log(`✅ OpenRouter processing completed in ${totalTime}ms`);
+                return {
+                    ...result,
+                    processing_time: {
+                        total: totalTime,
+                        ocr_translation: result.processing_time || totalTime
+                    },
+                    attempts: modelTried
+                };
+            } else {
+                console.error(`❌ All ${this.modelChain.length} models failed`);
+                return {
+                    success: false,
+                    error: `All models failed. Last error: ${result?.error || 'Unknown error'}`,
+                    processing_time: {
+                        total: totalTime
+                    },
+                    attempts: modelTried
+                };
+            }
             
         } catch (error) {
             console.error('❌ OpenRouter processing error:', error);
