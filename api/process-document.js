@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { loadAccounts, saveAccounts } from './data-store.js';
-import { QwenAPI } from './services/qwen-api.js';
+import { OpenRouterAPI } from './services/openrouter-api.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     console.log('📤 Returning success response and starting background processing...');
     res.json({ 
       success: true, 
-      message: 'Processing started successfully'
+      message: 'Processing started with OpenRouter AI'
     });
     
     // Start background processing (don't await to return response immediately)
@@ -92,18 +92,18 @@ export default async function handler(req, res) {
 }
 
 /**
- * Process document asynchronously with REAL Qwen AI API
+ * Process document asynchronously with OpenRouter AI API
  */
 async function processDocumentAsync(document, accounts, accountNumber) {
   try {
-    console.log('🚀 Starting background Qwen processing for:', document.originalName);
-    console.log('🔧 Initializing QwenAPI...');
+    console.log('🚀 Starting background OpenRouter processing for:', document.originalName);
+    console.log('🔧 Initializing OpenRouterAPI...');
     
-    const qwenAPI = new QwenAPI();
-    console.log('✅ QwenAPI initialized successfully');
+    const openRouterAPI = new OpenRouterAPI();
+    console.log('✅ OpenRouterAPI initialized successfully');
     
-    // Process document with REAL Qwen API
-    const processResult = await qwenAPI.processDocument(document, document.blobUrl);
+    // Process document with OpenRouter API (OCR + Translation in one step)
+    const processResult = await openRouterAPI.processDocument(document, document.blobUrl);
     
     // Reload accounts data (it might have been updated)
     const updatedAccounts = await loadAccounts();
@@ -116,7 +116,9 @@ async function processDocumentAsync(document, accounts, accountNumber) {
     }
     
     if (processResult.success) {
-      console.log('✅ Qwen processing completed successfully');
+      console.log('✅ OpenRouter processing completed successfully');
+      console.log('🎯 Model used:', processResult.model_name);
+      console.log('💰 Estimated cost:', `$${processResult.estimated_cost.toFixed(4)}`);
       
       // Update document with results
       updatedDocument.processed = true;
@@ -124,39 +126,47 @@ async function processDocumentAsync(document, accounts, accountNumber) {
         ocr: { 
           status: 'completed',
           completedAt: new Date().toISOString(),
-          processingTime: processResult.processing_time.ocr
+          processingTime: processResult.processing_time.ocr_translation
         },
         structuring: { 
           status: 'completed', 
           completedAt: new Date().toISOString(),
-          processingTime: processResult.processing_time.structuring
+          processingTime: 0 // Combined with OCR
         },
         translation: { 
           status: 'completed',
           completedAt: new Date().toISOString(), 
-          processingTime: processResult.processing_time.translation
+          processingTime: 0 // Combined with OCR
         }
       };
       
-      // Generate and store processed files with REAL content
-      const markdownFiles = await qwenAPI.generateMarkdownFiles(
-        document, 
-        { text: processResult.extracted_text, confidence: processResult.confidence.ocr, model: 'qwen-vl-plus', processingTime: processResult.processing_time.ocr, structured_data: processResult.structured_data },
-        processResult.translated_data
-      );
+      // Generate and store processed files with OpenRouter content
+      const markdownFile = await openRouterAPI.generateMarkdownFile(document, processResult);
       
       updatedDocument.processedVersions = {
-        ocrText: processResult.extracted_text,
-        markdownOriginal: markdownFiles.ocrMarkdown || `${document.id}-ocr.md`,
+        ocrText: processResult.translated_text, // OpenRouter does OCR+translation in one step
+        markdownOriginal: markdownFile || `${document.id}-ocr.md`,
         jsonOriginal: `${document.id}-ocr.json`,
-        markdownEnglish: markdownFiles.translatedMarkdown || `${document.id}-translated.md`, 
+        markdownEnglish: markdownFile || `${document.id}-translated.md`, 
         jsonEnglish: `${document.id}-translated.json`,
-        structuredData: processResult.structured_data,
-        translatedData: processResult.translated_data
+        structuredData: {
+          document_type: 'medical_report',
+          model_used: processResult.model_used,
+          tier: processResult.tier,
+          tokens_used: processResult.tokens_used,
+          estimated_cost: processResult.estimated_cost
+        },
+        translatedData: {
+          original_language: 'chinese',
+          target_language: 'english',
+          translated_text: processResult.translated_text,
+          model: processResult.model_name,
+          processing_time: processResult.processing_time
+        }
       };
       
     } else {
-      console.error('❌ Qwen processing failed:', processResult.error);
+      console.error('❌ OpenRouter processing failed:', processResult.error);
       
       updatedDocument.processingStatus = {
         ocr: { status: 'failed', error: processResult.error },
