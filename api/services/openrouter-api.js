@@ -38,7 +38,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 2048,
-                timeout: 20000, // Shorter timeout for faster fallback
+                timeout: 45000, // Longer timeout for network issues
                 description: 'Free Google model, good OCR quality'
             },
             'qwen/qwen-2.5-vl-72b-instruct': {
@@ -46,7 +46,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 4096,
-                timeout: 25000, // Slightly longer for larger model
+                timeout: 60000, // Longer timeout for larger model
                 description: 'Free Qwen model, excellent for Chinese medical documents'
             },
             
@@ -151,23 +151,8 @@ FORMAT your response as a structured medical report in English:
             console.log(`📥 Blob URL: ${blobUrl}`);
             console.log(`🎯 Auto-trying models: ${this.modelChain.join(' → ')}`);
             
-            // Quick connection test first
-            console.log('🔍 Testing OpenRouter connection...');
-            try {
-                const testResponse = await fetch(`${this.baseUrl}/models`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                console.log('🔍 Connection test status:', testResponse.status);
-                if (!testResponse.ok) {
-                    console.log('⚠️ Connection test failed, but continuing...');
-                }
-            } catch (testError) {
-                console.log('⚠️ Connection test error:', testError.message);
-            }
+            // Skip connection test - proceed directly to processing
+            console.log('🔍 Proceeding directly to model processing (no connection test)');
             
             let result = null;
             let modelTried = 0;
@@ -270,6 +255,7 @@ FORMAT your response as a structured medical report in English:
             console.log('🔑 API Key first 10 chars:', this.apiKey.substring(0, 10));
             console.log('📡 Request URL:', `${this.baseUrl}/chat/completions`);
             console.log('📊 Payload size:', JSON.stringify(payload).length, 'bytes');
+            console.log('⏰ Timeout set to:', config.timeout, 'ms');
             
             // Create timeout controller
             const controller = new AbortController();
@@ -282,9 +268,7 @@ FORMAT your response as a structured medical report in English:
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://strivefit.com',
-                    'X-Title': 'Strive & Fit Medical OCR'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload),
                 signal: controller.signal
