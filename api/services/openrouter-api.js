@@ -10,13 +10,10 @@ export class OpenRouterAPI {
         this.apiKey = process.env.OPENROUTER_API_KEY;
         this.baseUrl = 'https://openrouter.ai/api/v1';
         
-        // Auto-fallback model chain: Free → Ultra-cheap → Premium
+        // Auto-fallback model chain: Only FREE models
         this.modelChain = [
             'google/gemini-flash-1.5',        // Free
-            'meta-llama/llama-3.2-vision',    // Free
-            'anthropic/claude-3-haiku-vision', // Ultra-cheap
-            'openai/gpt-4o-mini',             // Ultra-cheap
-            'openai/gpt-4-vision-preview'     // Premium (last resort)
+            'qwen/qwen-2.5-vl-72b-instruct'   // Free - Qwen2.5-VL-72B-Instruct
         ];
         
         if (!this.apiKey) {
@@ -44,13 +41,13 @@ export class OpenRouterAPI {
                 timeout: 20000, // Shorter timeout for faster fallback
                 description: 'Free Google model, good OCR quality'
             },
-            'meta-llama/llama-3.2-vision': {
-                name: 'Llama 3.2 Vision',
+            'qwen/qwen-2.5-vl-72b-instruct': {
+                name: 'Qwen2.5-VL-72B-Instruct',
                 cost: 0.00,
-                tier: 'free', 
-                maxTokens: 2048,
-                timeout: 20000, // Shorter timeout for faster fallback
-                description: 'Free Meta model, solid OCR performance'
+                tier: 'free',
+                maxTokens: 4096,
+                timeout: 25000, // Slightly longer for larger model
+                description: 'Free Qwen model, excellent for Chinese medical documents'
             },
             
             // Ultra-Affordable Models
@@ -133,6 +130,7 @@ FORMAT your response as a structured medical report in English:
         // Model-specific optimizations
         const modelOptimizations = {
             'google/gemini-flash-1.5': basePrompt + '\n\nPlease be thorough and accurate in your OCR extraction.',
+            'qwen/qwen-2.5-vl-72b-instruct': basePrompt + '\n\nAs a specialized Chinese model, please provide the most accurate OCR extraction and professional English translation for this Chinese medical document. Focus on preserving medical terminology and clinical accuracy.',
             'meta-llama/llama-3.2-vision': basePrompt + '\n\nExtract text carefully and translate professionally.',
             'anthropic/claude-3-haiku-vision': basePrompt + '\n\nFocus on medical accuracy and professional terminology.',
             'openai/gpt-4-vision-preview': basePrompt + '\n\nProvide the most accurate medical translation possible.',
