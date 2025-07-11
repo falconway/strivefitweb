@@ -79,11 +79,15 @@ export default async function handler(req, res) {
       message: 'Processing started with OpenRouter AI'
     });
     
-    // Start background processing (don't await to return response immediately)
+    // Start background processing with shorter timeout protection
     console.log('🚀 Starting background processing...');
-    processDocumentAsync(document, accounts, accountNumber).catch(error => {
-      console.error('❌ Background processing error:', error);
-    });
+    
+    // Use setTimeout to ensure processing doesn't block response
+    setTimeout(() => {
+      processDocumentAsync(document, accounts, accountNumber).catch(error => {
+        console.error('❌ Background processing error:', error);
+      });
+    }, 100); // Start processing 100ms after response is sent
     
   } catch (error) {
     console.error('Processing error:', error);

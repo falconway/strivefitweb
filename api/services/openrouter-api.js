@@ -38,7 +38,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 2048,
-                timeout: 45000, // Longer timeout for network issues
+                timeout: 30000, // 30 seconds - within Vercel limits
                 description: 'Free Google model, good OCR quality'
             },
             'qwen/qwen-2.5-vl-72b-instruct': {
@@ -46,7 +46,7 @@ export class OpenRouterAPI {
                 cost: 0.00,
                 tier: 'free',
                 maxTokens: 4096,
-                timeout: 60000, // Longer timeout for larger model
+                timeout: 40000, // 40 seconds - within Vercel limits
                 description: 'Free Qwen model, excellent for Chinese medical documents'
             },
             
@@ -280,11 +280,13 @@ FORMAT your response as a structured medical report in English:
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('❌ OpenRouter API error response:', errorText);
                 throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
             console.log('📥 Received response from OpenRouter');
+            console.log('✅ API call successful, parsing response...');
 
             if (!data.choices || !data.choices[0] || !data.choices[0].message) {
                 throw new Error('Invalid response format from OpenRouter API');
