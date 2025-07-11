@@ -81,14 +81,54 @@ export class QwenAPI {
     }
     
     /**
-     * Download file from Vercel Blob URL
+     * Download file from Vercel Blob URL with timeout and retry logic
      */
     async downloadFile(blobUrl) {
-        const response = await fetch(blobUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to download file: ${response.statusText}`);
+        const maxRetries = 3;
+        const timeoutMs = 30000; // 30 seconds timeout
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`📥 Download attempt ${attempt}/${maxRetries} for blob URL...`);
+                
+                // Create timeout controller
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                
+                const response = await fetch(blobUrl, {
+                    signal: controller.signal,
+                    headers: {
+                        'User-Agent': 'QwenAPI/1.0'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                console.log(`✅ Download response received, status: ${response.status}`);
+                console.log(`📊 Content-Length: ${response.headers.get('content-length')} bytes`);
+                
+                const arrayBuffer = await response.arrayBuffer();
+                console.log(`✅ File downloaded successfully, size: ${arrayBuffer.byteLength} bytes`);
+                
+                return arrayBuffer;
+                
+            } catch (error) {
+                console.error(`❌ Download attempt ${attempt} failed:`, error.message);
+                
+                if (attempt === maxRetries) {
+                    throw new Error(`File download failed after ${maxRetries} attempts: ${error.message}`);
+                }
+                
+                // Wait before retry (exponential backoff)
+                const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+                console.log(`⏳ Waiting ${delay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
         }
-        return await response.arrayBuffer();
     }
     
     /**
@@ -131,6 +171,10 @@ export class QwenAPI {
             
             console.log('📤 Sending OCR request to Qwen-VL API...');
             
+            // Add timeout for API calls
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds for OCR
+            
             const ocrResponse = await fetch(`${this.baseUrl}/services/aigc/multimodal-generation/generation`, {
                 method: 'POST',
                 headers: {
@@ -138,8 +182,11 @@ export class QwenAPI {
                     'Content-Type': 'application/json',
                     'X-DashScope-SSE': 'disable'
                 },
-                body: JSON.stringify(ocrPayload)
+                body: JSON.stringify(ocrPayload),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             if (!ocrResponse.ok) {
                 const errorText = await ocrResponse.text();
@@ -212,6 +259,10 @@ Please provide:
             
             console.log('📤 Sending translation request to Qwen text API...');
             
+            // Add timeout for translation API calls
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 seconds for translation
+            
             const translationResponse = await fetch(`${this.baseUrl}/services/aigc/text-generation/generation`, {
                 method: 'POST',
                 headers: {
@@ -219,8 +270,11 @@ Please provide:
                     'Content-Type': 'application/json',
                     'X-DashScope-SSE': 'disable'
                 },
-                body: JSON.stringify(translationPayload)
+                body: JSON.stringify(translationPayload),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             if (!translationResponse.ok) {
                 const errorText = await translationResponse.text();
