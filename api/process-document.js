@@ -25,31 +25,43 @@ export default async function handler(req, res) {
 
   try {
     console.log('🔄 Processing document with Qwen AI:', documentId);
+    console.log('📊 Request body:', { documentId, dob: dob ? 'provided' : 'missing', accountNumber: accountNumber ? 'provided' : 'missing' });
     
     // Load accounts data using persistent storage
+    console.log('📂 Loading accounts data...');
     const accounts = await loadAccounts();
+    console.log('✅ Accounts loaded, total:', Object.keys(accounts).length);
     
     const account = accounts[accountNumber];
     if (!account) {
+      console.error('❌ Account not found:', accountNumber);
       return res.status(401).json({ error: 'Invalid account' });
     }
+    console.log('✅ Account found with', account.documents.length, 'documents');
     
     const combinedHash = crypto.createHash('sha256').update(dob + accountNumber).digest('hex');
     if (combinedHash !== account.combinedHash) {
+      console.error('❌ Invalid credentials for account:', accountNumber);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    console.log('✅ Credentials validated');
 
     // Find the document
     const document = account.documents.find(doc => doc.id === documentId);
     if (!document) {
+      console.error('❌ Document not found:', documentId);
       return res.status(404).json({ error: 'Document not found' });
     }
+    console.log('✅ Document found:', document.originalName);
     
     if (!document.blobUrl) {
+      console.error('❌ Document blob URL not available:', documentId);
       return res.status(400).json({ error: 'Document file not available for processing' });
     }
+    console.log('✅ Document blob URL available');
 
     // Update processing status to indicate start
+    console.log('📝 Updating processing status...');
     document.processingStatus = {
       ocr: { status: 'processing', startTime: new Date().toISOString() },
       structuring: { status: 'pending' },
@@ -58,15 +70,17 @@ export default async function handler(req, res) {
     
     // Save initial status update
     await saveAccounts(accounts);
+    console.log('✅ Initial processing status saved');
 
-    // Process document with Qwen AI Simulator
     // Return immediately to avoid timeout, process asynchronously
+    console.log('📤 Returning success response and starting background processing...');
     res.json({ 
       success: true, 
-      message: 'Processing started with Qwen AI'
+      message: 'Processing started successfully'
     });
     
     // Start background processing (don't await to return response immediately)
+    console.log('🚀 Starting background processing...');
     processDocumentAsync(document, accounts, accountNumber).catch(error => {
       console.error('❌ Background processing error:', error);
     });
@@ -81,10 +95,12 @@ export default async function handler(req, res) {
  * Process document asynchronously with REAL Qwen AI API
  */
 async function processDocumentAsync(document, accounts, accountNumber) {
-  const qwenAPI = new QwenAPI();
-  
   try {
     console.log('🚀 Starting background Qwen processing for:', document.originalName);
+    console.log('🔧 Initializing QwenAPI...');
+    
+    const qwenAPI = new QwenAPI();
+    console.log('✅ QwenAPI initialized successfully');
     
     // Process document with REAL Qwen API
     const processResult = await qwenAPI.processDocument(document, document.blobUrl);
