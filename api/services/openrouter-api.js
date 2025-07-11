@@ -151,6 +151,24 @@ FORMAT your response as a structured medical report in English:
             console.log(`📥 Blob URL: ${blobUrl}`);
             console.log(`🎯 Auto-trying models: ${this.modelChain.join(' → ')}`);
             
+            // Quick connection test first
+            console.log('🔍 Testing OpenRouter connection...');
+            try {
+                const testResponse = await fetch(`${this.baseUrl}/models`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                console.log('🔍 Connection test status:', testResponse.status);
+                if (!testResponse.ok) {
+                    console.log('⚠️ Connection test failed, but continuing...');
+                }
+            } catch (testError) {
+                console.log('⚠️ Connection test error:', testError.message);
+            }
+            
             let result = null;
             let modelTried = 0;
             
@@ -249,10 +267,16 @@ FORMAT your response as a structured medical report in English:
             };
 
             console.log('📤 Sending request to OpenRouter API...');
+            console.log('🔑 API Key first 10 chars:', this.apiKey.substring(0, 10));
+            console.log('📡 Request URL:', `${this.baseUrl}/chat/completions`);
+            console.log('📊 Payload size:', JSON.stringify(payload).length, 'bytes');
             
             // Create timeout controller
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), config.timeout);
+            const timeoutId = setTimeout(() => {
+                console.log('⏰ Request timed out after', config.timeout, 'ms');
+                controller.abort();
+            }, config.timeout);
 
             const response = await fetch(`${this.baseUrl}/chat/completions`, {
                 method: 'POST',
@@ -267,6 +291,8 @@ FORMAT your response as a structured medical report in English:
             });
 
             clearTimeout(timeoutId);
+            console.log('📥 Response received, status:', response.status);
+            console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -303,9 +329,25 @@ FORMAT your response as a structured medical report in English:
 
         } catch (error) {
             console.error(`❌ ${config.name} processing error:`, error.message);
+            console.error('🔍 Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack?.split('\n')[0] // First line of stack trace
+            });
+            
+            // Check for specific error types
+            if (error.name === 'AbortError') {
+                console.error('⏰ Request was aborted due to timeout');
+            } else if (error.message.includes('fetch')) {
+                console.error('🌐 Network/fetch error occurred');
+            } else if (error.message.includes('API')) {
+                console.error('🔑 API-related error occurred');
+            }
+            
             return {
                 success: false,
                 error: error.message,
+                error_type: error.name,
                 model_used: modelName,
                 model_name: config.name
             };
