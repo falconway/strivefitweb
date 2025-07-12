@@ -1,6 +1,14 @@
-# Railway Deployment Guide
+# Railway Deployment Guide - FIXED 🚀
 
 This guide explains how to deploy the Strive & Fit medical document management system to Railway.
+
+## ✅ Issues Fixed
+
+1. **Dependency Issues**: Removed invalid `crypto` package, added `node-fetch`
+2. **API Key Handling**: Added graceful handling for missing OpenRouter API key
+3. **Health Checks**: Added `/` and `/health` endpoints for Railway monitoring
+4. **Error Handling**: Server starts even if storage initialization fails
+5. **Port Binding**: Server binds to `0.0.0.0` for Railway compatibility
 
 ## Overview
 

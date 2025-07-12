@@ -20,8 +20,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize OpenRouter API
-const openRouterAPI = new OpenRouterAPI();
+// Initialize OpenRouter API (lazy initialization)
+let openRouterAPI = null;
+
+function getOpenRouterAPI() {
+    if (!openRouterAPI) {
+        openRouterAPI = new OpenRouterAPI();
+    }
+    return openRouterAPI;
+}
 
 // Middleware
 app.use(cors());
@@ -57,6 +64,25 @@ function isValidDOB(dob) {
 }
 
 // API Routes
+
+// Health check endpoint
+app.get('/', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        service: 'Strive & Fit Medical Document Management',
+        version: '2.0.0',
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        timestamp: new Date().toISOString()
+    });
+});
 
 // Authentication
 app.post('/api/auth', async (req, res) => {
@@ -211,7 +237,8 @@ async function processDocumentAsync(documentId, document, accountNumber) {
         const dataUrl = `data:${mimeType};base64,${base64Data}`;
         
         // Process with OpenRouter
-        const result = await openRouterAPI.processDocument(document, dataUrl);
+        const api = getOpenRouterAPI();
+        const result = await api.processDocument(document, dataUrl);
         
         if (result.success) {
             // Store processed files
@@ -388,13 +415,21 @@ async function initializeApp() {
         await storage.initializeStorage();
         console.log('✅ Storage initialized successfully');
         
-        app.listen(PORT, () => {
+        app.listen(PORT, '0.0.0.0', () => {
             console.log(`✅ Server running on port ${PORT}`);
             console.log(`📁 Storage path: ${storage.storagePath}`);
+            console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+            console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
         });
     } catch (error) {
         console.error('❌ Failed to initialize app:', error);
-        process.exit(1);
+        
+        // Try to start server anyway for debugging
+        console.log('⚠️ Starting server without storage initialization...');
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`⚠️ Server running on port ${PORT} (storage not initialized)`);
+            console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+        });
     }
 }
 

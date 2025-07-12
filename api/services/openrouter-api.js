@@ -3,7 +3,7 @@
  * Supports multiple vision models with easy swapping
  */
 
-import { put } from '@vercel/blob';
+import fetch from 'node-fetch';
 
 export class OpenRouterAPI {
     constructor() {
@@ -18,8 +18,9 @@ export class OpenRouterAPI {
         
         if (!this.apiKey) {
             const error = 'OPENROUTER_API_KEY environment variable not set';
-            console.error('❌', error);
-            throw new Error(error);
+            console.warn('⚠️', error);
+            console.warn('⚠️ Document processing will be disabled until API key is configured');
+            // Don't throw error immediately - allow server to start
         }
         
         console.log('✅ OpenRouter API initialized');
@@ -146,8 +147,18 @@ FORMAT your response as a structured medical report in English:
     async processDocument(document, blobUrl) {
         const startTime = Date.now();
         
+        // Check if API key is available
+        if (!this.apiKey) {
+            return {
+                success: false,
+                error: 'OpenRouter API key not configured',
+                ocrText: '',
+                translatedText: ''
+            };
+        }
+        
         try {
-            console.log(`🔄 Starting OpenRouter processing for: ${document.originalName}`);
+            console.log(`🔄 Starting OpenRouter processing for: ${document.filename || document.originalName}`);
             console.log(`📥 Blob URL: ${blobUrl}`);
             console.log(`🎯 Auto-trying models: ${this.modelChain.join(' → ')}`);
             
